@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="sprite" aria-hidden="true" width="0" height="0">
+  <!-- Vignette pictograms. One 24 unit grid, one 2.75 stroke, square ends,
+       mitred corners. Solid shapes (record, stop, play, sizes) are filled.
+       Ids carry an "i-" prefix so they never collide with page ids.
+       The share page inlines this file (worker/index.js imports it). -->
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 12H19M12.5 5l7 7-7 7"/></g></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M20.5 12H5M11.5 5l-7 7 7 7"/></g></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 20.5V5M5 11.5l7-7 7 7"/></g></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3.5V19M5 12.5l7 7 7-7"/></g></symbol>
+  <symbol id="i-arrow-out" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 18.5 18 6M8.5 5.5H18.5V15.5"/></g></symbol>
+  <symbol id="i-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.75" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5.5" y="5.5" width="13" height="13" fill="currentColor"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6.5 4.25v15.5L19.5 12z" fill="currentColor"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 6.75h12.5v10.5H2.75zM15.25 10.5l6-3.25v9.5l-6-3.25"/></g></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M8.75 2.75h6.5v11h-6.5zM5 10.5a7 7 0 0 0 14 0M12 17.5v3.75M8 21.25h8"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M4.5 12.5l4.75 4.75L19.5 7"/></g></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3.25 21.75 20.25H2.25z"/><path d="M12 9.5v4.5M12 17v.25"/></g></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M8.75 8.75h12.5v12.5H8.75z"/><path d="M5.25 15.25h-2.5V2.75h12.5v2.5"/></g></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 3.25v12M6.25 9.75 12 15.5l5.75-5.75M3.25 20.75h17.5"/></g></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 6.25h17M9 6.25v-3h6v3M5.75 6.25l1 14.5h10.5l1-14.5M10 10.5v6.25M14 10.5v6.25"/></g></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="M2.75 4.5h3.5V8h-3.5zM2.75 10.25h3.5v3.5h-3.5zM2.75 16h3.5v3.5h-3.5z" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M10 6.25h11.25M10 12h11.25M10 17.75h11.25"/></g></symbol>
+  <symbol id="i-scissors" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><circle cx="6.25" cy="17.75" r="3"/><circle cx="17.75" cy="17.75" r="3"/><path d="M8 15.25 18.25 3M16 15.25 5.75 3"/></g></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/><path d="M3 16.25l5.25-5.25 4 4 3-3 5.5 5.5"/></g></symbol>
+  <symbol id="i-mark-start" viewBox="0 0 24 24"><path d="M3.75 3.75h5v2.5h-2.5v11.5h2.5v2.5h-5z" fill="currentColor"/><path d="M11.5 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
+  <symbol id="i-mark-end" viewBox="0 0 24 24"><path d="M20.25 3.75h-5v2.5h2.5v11.5h-2.5v2.5h5z" fill="currentColor"/><path d="M4.25 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
+  <!-- Cut from / cut to: the start or end bracket beside a struck rule (a struck rule means removed). -->
+  <symbol id="i-cut-from" viewBox="0 0 24 24"><path d="M3.75 3.75h5v2.5h-2.5v11.5h2.5v2.5h-5z" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12.25 12h8M13.75 6.5l5 11"/></g></symbol>
+  <symbol id="i-cut-to" viewBox="0 0 24 24"><path d="M20.25 3.75h-5v2.5h2.5v11.5h-2.5v2.5h5z" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.75 12h8M5.25 6.5l5 11"/></g></symbol>
+  <symbol id="i-size-s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></symbol>
+  <symbol id="i-size-m" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.25" fill="currentColor"/></symbol>
+  <symbol id="i-size-l" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor"/></symbol>
+</svg>

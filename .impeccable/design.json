@@ -1,0 +1,462 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T00:00:00Z",
+  "title": "Design System: Vignette",
+  "extensions": {
+    "colorMeta": {
+      "cream": {
+        "role": "primary",
+        "displayName": "Wayfinding Cream",
+        "canonical": "#F1E8D0",
+        "tonalRamp": [
+          "#2B2416",
+          "#5A4A1E",
+          "#8A7440",
+          "#B9A26A",
+          "#D8CBA6",
+          "#F1E8D0",
+          "#F7F1E1",
+          "#FCF9F2"
+        ]
+      },
+      "black": {
+        "role": "neutral",
+        "displayName": "Sign Black",
+        "canonical": "#0B0B0B",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "frame": {
+        "role": "neutral",
+        "displayName": "Panel Frame",
+        "canonical": "#1A1A1A",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "grey": {
+        "role": "neutral",
+        "displayName": "Surface Grey",
+        "canonical": "#E6E6E6",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "white": {
+        "role": "neutral",
+        "displayName": "Sign White",
+        "canonical": "#FFFFFF",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "umber": {
+        "role": "neutral",
+        "displayName": "Umber (secondary on cream)",
+        "canonical": "#5A4A1E",
+        "tonalRamp": [
+          "#1F1A03",
+          "#332A05",
+          "#5A4A1E",
+          "#6B580B",
+          "#8C740F",
+          "#B39414",
+          "#D9B51A",
+          "#F2D45A"
+        ]
+      },
+      "ash": {
+        "role": "neutral",
+        "displayName": "Ash (secondary on black)",
+        "canonical": "#B3B3B3",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "smoke": {
+        "role": "neutral",
+        "displayName": "Smoke (closed, unlit)",
+        "canonical": "#8C8C8C",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "slate": {
+        "role": "neutral",
+        "displayName": "Slate (secondary on grey)",
+        "canonical": "#4A4A4A",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "rule-dark": {
+        "role": "neutral",
+        "displayName": "Rule Dark",
+        "canonical": "#333333",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#1A1A1A",
+          "#333333",
+          "#4A4A4A",
+          "#8C8C8C",
+          "#B3B3B3",
+          "#E6E6E6",
+          "#FFFFFF"
+        ]
+      },
+      "vermilion": {
+        "role": "primary",
+        "displayName": "Wayfinding Vermilion",
+        "canonical": "#CF2E12",
+        "tonalRamp": [
+          "#3D0C04",
+          "#7A1A0A",
+          "#A3230E",
+          "#CF2E12",
+          "#E0391B",
+          "#EB6A52",
+          "#F5A898",
+          "#FBE0DA"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "clock": {
+        "displayName": "Clock",
+        "purpose": "The recorder counter; 4.3rem under 720px. Bold, tabular, 0.8 leading."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Title of the current or live band."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Share page title, library empty-state title, gate title on phones."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Brand mark, closed and done band titles, Details summary, share link box (at 500)."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Action and toggle labels, header link, inputs, register cells, band notes (at 400)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Page default."
+      },
+      "note": {
+        "displayName": "Note",
+        "purpose": "The one-line note under a band title; the empty-well prompt."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Details readout, thumbnail hint, phone register dates."
+      }
+    },
+    "fontFallback": {
+      "family": "Fira Sans Fallback",
+      "measured": "Chromium at 1000px: Fira Sans ascent 0.935em, descent 0.265em, line gap 0",
+      "regular": {
+        "src": "local Arial / ArialMT / Liberation Sans",
+        "weight": "400 500",
+        "sizeAdjust": "101.52%",
+        "ascentOverride": "92.1%",
+        "descentOverride": "26.1%",
+        "lineGapOverride": "0%"
+      },
+      "bold": {
+        "src": "local Arial Bold / Arial-BoldMT / Liberation Sans Bold",
+        "weight": "700",
+        "sizeAdjust": "94.67%",
+        "ascentOverride": "98.76%",
+        "descentOverride": "27.99%",
+        "lineGapOverride": "0%"
+      }
+    },
+    "shadows": [
+      {
+        "name": "inset-rule",
+        "value": "inset 0 0 0 2px var(--line)",
+        "purpose": "The line around quiet squares, toggle plates, the well and error panels; a border that does not grow the box."
+      },
+      {
+        "name": "selection-ring",
+        "value": "0 0 0 3px var(--surface), 0 0 0 5px var(--fg)",
+        "purpose": "Bubble hover and drag; trim handles use 3px / 6px with var(--focus) on focus."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Every transition and the flap's lower half."
+      },
+      {
+        "name": "control",
+        "value": "150ms",
+        "purpose": "Action fills, register row hover."
+      },
+      {
+        "name": "repaint",
+        "value": "200ms",
+        "purpose": "Band and stage background and colour changes (cream to black on record)."
+      },
+      {
+        "name": "travel",
+        "value": "900ms linear infinite",
+        "purpose": "Busy bar across a pictogram square."
+      },
+      {
+        "name": "flap",
+        "value": "200ms",
+        "purpose": "Countdown split-flap; top half on cubic-bezier(.55, 0, .9, .4)."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "720px"
+      },
+      {
+        "name": "register-stack",
+        "value": "900px"
+      },
+      {
+        "name": "band-two-col",
+        "value": "1100px"
+      },
+      {
+        "name": "register-narrow",
+        "value": "1180px"
+      },
+      {
+        "name": "wrap",
+        "value": "1600px"
+      }
+    ],
+    "bubbleSizes": {
+      "small": 0.1,
+      "medium": 0.14,
+      "large": 0.2,
+      "unit": "radius as a share of the frame's shorter edge",
+      "ring": 0.03,
+      "margin": 0.025,
+      "nudge": 0.02
+    }
+  },
+  "components": [
+    {
+      "name": "Current band",
+      "kind": "custom",
+      "refersTo": "band-current",
+      "description": "The one cream band: number and verb title, a note, tools, and the primary action locked to the right edge.",
+      "html": "<section class=\"ds-band ds-band--current\"><div class=\"ds-band-grid\"><h2 class=\"ds-band-title\"><span class=\"ds-num\">1</span> Set up</h2><p class=\"ds-band-note\">Nothing shared yet.</p><button class=\"ds-act ds-band-action\"><span class=\"ds-act-label\">Share screen</span><span class=\"ds-sq\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"><path d=\"M3.5 12H19M12.5 5l7 7-7 7\"/></g></svg></span></button></div></section>",
+      "css": ".ds-band { font-family: var(--font, 'Fira Sans', sans-serif); background: #F1E8D0; color: #0B0B0B; border-top: 2px solid #333333; } .ds-band-grid { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; grid-template-areas: 'title tools action' 'note tools action'; align-items: center; column-gap: 32px; row-gap: 6px; padding: 28px 32px; } .ds-band-title { grid-area: title; margin: 0; font-weight: 700; font-size: 2.986rem; line-height: 1.1; letter-spacing: -.012em; } .ds-num { font-variant-numeric: tabular-nums; } .ds-band-note { grid-area: note; margin: 0; font-size: 1.2rem; line-height: 1.35; color: #5A4A1E; } .ds-band-action { grid-area: action; justify-self: end; } .ds-act { display: inline-flex; align-items: center; min-height: 3.5rem; padding: 0; border: 2px solid #0B0B0B; background: transparent; color: #0B0B0B; font: 500 1.2rem/1.15 inherit; cursor: pointer; transition: background-color 150ms cubic-bezier(.16,1,.3,1), color 150ms cubic-bezier(.16,1,.3,1); } .ds-act-label { padding: 10px 20px; } .ds-sq { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; margin: -2px; background: #0B0B0B; color: #FFFFFF; } .ds-sq svg { width: 56%; height: 56%; fill: currentColor; } .ds-act:hover { background: #0B0B0B; color: #F1E8D0; } .ds-act:active { background: #1A1A1A; color: #FFFFFF; } .ds-act:focus-visible { outline: 3px solid #0B0B0B; outline-offset: 3px; }"
+    },
+    {
+      "name": "Closed and done bands",
+      "kind": "custom",
+      "refersTo": "band-closed",
+      "description": "Steps not reached yet (Smoke title, 14px) and finished steps (white title with a check, 10px).",
+      "html": "<section class=\"ds-band-b ds-band-b--done\"><div class=\"ds-band-b-grid\"><h2 class=\"ds-band-b-title\"><svg class=\"ds-check\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"><path d=\"M4.5 12.5l4.75 4.75L19.5 7\"/></g></svg><span class=\"ds-num\">1</span> Set up</h2><p class=\"ds-band-b-note\">Sharing a tab. Webcam on, mic on.</p></div></section><section class=\"ds-band-b ds-band-b--closed\"><div class=\"ds-band-b-grid\"><h2 class=\"ds-band-b-title\"><span class=\"ds-num\">2</span> Record</h2></div></section>",
+      "css": ".ds-band-b { font-family: var(--font, 'Fira Sans', sans-serif); background: #0B0B0B; color: #FFFFFF; border-top: 2px solid #333333; } .ds-band-b-grid { display: flex; align-items: baseline; gap: 32px; padding: 10px 32px; } .ds-band-b--closed .ds-band-b-grid { padding: 14px 32px; } .ds-band-b-title { display: flex; align-items: baseline; gap: .35em; margin: 0; font-weight: 700; font-size: 1.44rem; line-height: 1.1; letter-spacing: -.012em; } .ds-band-b--closed .ds-band-b-title { color: #8C8C8C; } .ds-check { width: .9em; height: .9em; align-self: center; } .ds-num { font-variant-numeric: tabular-nums; } .ds-band-b-note { margin: 0; font-size: 1rem; color: #B3B3B3; }"
+    },
+    {
+      "name": "Primary action on black",
+      "kind": "button",
+      "refersTo": "action-primary-on-black",
+      "description": "Framed label with the inset square at the start; on black the square is cream with a black glyph.",
+      "html": "<button class=\"ds-act-k\"><span class=\"ds-sq-k\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"6.75\" fill=\"currentColor\"/></svg></span><span class=\"ds-act-k-label\">Start recording</span></button>",
+      "css": ".ds-act-k { display: inline-flex; align-items: center; min-height: 3.5rem; padding: 0; border: 2px solid #FFFFFF; background: #0B0B0B; color: #FFFFFF; font: 500 1.2rem/1.15 var(--font, 'Fira Sans', sans-serif); cursor: pointer; transition: background-color 150ms cubic-bezier(.16,1,.3,1), color 150ms cubic-bezier(.16,1,.3,1); } .ds-act-k-label { padding: 10px 20px; } .ds-sq-k { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; margin: -2px; background: #F1E8D0; color: #0B0B0B; } .ds-sq-k svg { width: 56%; height: 56%; } .ds-act-k:hover { background: #FFFFFF; color: #0B0B0B; } .ds-act-k:active { background: #1A1A1A; color: #FFFFFF; } .ds-act-k:focus-visible { outline: 3px solid #F1E8D0; outline-offset: 3px; } .ds-act-k:disabled { cursor: not-allowed; border-color: rgb(255 255 255 / .3); color: rgb(255 255 255 / .45); } .ds-act-k:disabled .ds-sq-k { background: rgb(255 204 0 / .3); }"
+    },
+    {
+      "name": "Quiet action",
+      "kind": "button",
+      "refersTo": "action-quiet",
+      "description": "An outlined 3rem square and a label; hover fills the square and underlines the word.",
+      "html": "<button class=\"ds-quiet\"><span class=\"ds-quiet-sq\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"><path d=\"M8.75 8.75h12.5v12.5H8.75z\"/><path d=\"M5.25 15.25h-2.5V2.75h12.5v2.5\"/></g></svg></span><span class=\"ds-quiet-label\">Copy</span></button>",
+      "css": ".ds-quiet { display: inline-flex; align-items: center; min-height: 3rem; padding: 0; border: 0; background: transparent; color: #FFFFFF; font: 500 1.2rem/1.15 var(--font, 'Fira Sans', sans-serif); cursor: pointer; } .ds-quiet-sq { display: grid; place-items: center; width: 3rem; height: 3rem; box-shadow: inset 0 0 0 2px #FFFFFF; transition: background-color 150ms cubic-bezier(.16,1,.3,1), color 150ms cubic-bezier(.16,1,.3,1); } .ds-quiet-sq svg { width: 56%; height: 56%; } .ds-quiet-label { padding: 6px 14px; } .ds-quiet:hover .ds-quiet-sq { background: #FFFFFF; color: #0B0B0B; } .ds-quiet:hover .ds-quiet-label { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .22em; } .ds-quiet:active .ds-quiet-sq { background: #1A1A1A; color: #FFFFFF; } .ds-quiet:focus-visible { outline: 3px solid #F1E8D0; outline-offset: 3px; }"
+    },
+    {
+      "name": "Toggle plate",
+      "kind": "chip",
+      "refersTo": "toggle-plate-lit",
+      "description": "A black plate with a white pictogram; unchecked it goes Smoke and is struck through.",
+      "html": "<label class=\"ds-toggle\"><span class=\"ds-tg\"><input type=\"checkbox\" checked><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"><path d=\"M2.75 6.75h12.5v10.5H2.75zM15.25 10.5l6-3.25v9.5l-6-3.25\"/></g><path class=\"ds-knock\" d=\"M3.5 3.5l17 17\"/><path class=\"ds-strike\" d=\"M3.5 3.5l17 17\"/></svg></span><span class=\"ds-toggle-label\">Webcam bubble</span></label>",
+      "css": ".ds-toggle { display: inline-flex; align-items: center; gap: 12px; min-height: 3rem; font: 500 1.2rem/1.15 var(--font, 'Fira Sans', sans-serif); color: #0B0B0B; cursor: pointer; } .ds-tg { position: relative; display: grid; place-items: center; width: 3rem; height: 3rem; background: #0B0B0B; color: #FFFFFF; box-shadow: inset 0 0 0 2px #0B0B0B; } .ds-tg input { appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; background: transparent; cursor: pointer; } .ds-tg svg { position: relative; width: 56%; height: 56%; pointer-events: none; } .ds-knock, .ds-strike { display: none; fill: none; stroke-linecap: square; } .ds-knock { stroke: #0B0B0B; stroke-width: 7; } .ds-strike { stroke: currentColor; stroke-width: 2.75; } .ds-tg input:not(:checked) ~ svg { color: #8C8C8C; } .ds-tg input:not(:checked) ~ svg :is(.ds-knock, .ds-strike) { display: inline; } .ds-tg input:active ~ svg { transform: scale(.86); } .ds-toggle:hover .ds-toggle-label { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .22em; } .ds-tg input:focus-visible { outline: 3px solid #0B0B0B; outline-offset: 3px; }"
+    },
+    {
+      "name": "Bubble size strip",
+      "kind": "chip",
+      "refersTo": "square-on-cream",
+      "description": "Three 3rem segments sharing one 2px rule; the chosen one is filled.",
+      "html": "<fieldset class=\"ds-sizes\"><label class=\"ds-seg\"><input type=\"radio\" name=\"ds-size\" value=\"small\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"3\" fill=\"currentColor\"/></svg></label><label class=\"ds-seg\"><input type=\"radio\" name=\"ds-size\" value=\"medium\" checked><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"4.5\" fill=\"currentColor\"/></svg></label><label class=\"ds-seg\"><input type=\"radio\" name=\"ds-size\" value=\"large\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"6\" fill=\"currentColor\"/></svg></label></fieldset>",
+      "css": ".ds-sizes { display: inline-flex; margin: 0; padding: 0; border: 0; } .ds-seg { position: relative; display: grid; place-items: center; width: 3rem; height: 3rem; color: #0B0B0B; box-shadow: inset 0 0 0 2px #0B0B0B; } .ds-seg + .ds-seg { margin-left: -2px; } .ds-seg input { appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; background: transparent; cursor: pointer; } .ds-seg svg { position: relative; width: 50%; height: 50%; pointer-events: none; } .ds-seg input:hover:not(:checked) { box-shadow: inset 0 0 0 4px #0B0B0B; } .ds-seg input:checked { background: #0B0B0B; } .ds-seg input:checked ~ svg { color: #FFFFFF; } .ds-seg input:focus-visible { outline: 3px solid #0B0B0B; outline-offset: 3px; z-index: 1; }"
+    },
+    {
+      "name": "Text input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Surface grey with a 2px black rule; placeholder in Slate; selection cream on black.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Title</span><input class=\"ds-input\" type=\"text\" placeholder=\"Untitled recording\"></label>",
+      "css": ".ds-field { display: grid; gap: 8px; font-family: var(--font, 'Fira Sans', sans-serif); color: #0B0B0B; } .ds-field-label { font-weight: 500; font-size: 1rem; } .ds-input { min-height: 3.5rem; padding: 8px 14px; border: 2px solid #0B0B0B; border-radius: 0; background: #E6E6E6; color: #0B0B0B; font: 500 1.2rem/1.15 inherit; caret-color: #0B0B0B; } .ds-input::placeholder { color: #4A4A4A; opacity: 1; } .ds-input:hover { box-shadow: inset 0 0 0 1px #0B0B0B; } .ds-input:focus-visible { outline: 3px solid #0B0B0B; outline-offset: 2px; } .ds-input::selection { background: #0B0B0B; color: #F1E8D0; }"
+    },
+    {
+      "name": "Error panel",
+      "kind": "card",
+      "refersTo": "error-panel",
+      "description": "A black panel with a white warning pictogram that says what happened and what to do.",
+      "html": "<div class=\"ds-msg\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"><path d=\"M12 3.25 21.75 20.25H2.25z\"/><path d=\"M12 9.5v4.5M12 17v.25\"/></g></svg><p>Screen sharing was cancelled. Choose Share screen to try again.</p></div>",
+      "css": ".ds-msg { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #0B0B0B; color: #FFFFFF; box-shadow: inset 0 0 0 2px #FFFFFF; font: 400 1rem/1.5 var(--font, 'Fira Sans', sans-serif); } .ds-msg svg { flex: none; width: 1.5rem; height: 1.5rem; margin-top: 1px; } .ds-msg p { margin: 0; }"
+    },
+    {
+      "name": "Header strip",
+      "kind": "nav",
+      "refersTo": "band-closed",
+      "description": "Black strip, brand left, one pictogram link right; underline goes cream on hover.",
+      "html": "<header class=\"ds-top\"><a class=\"ds-brand\" href=\"#\">Vignette</a><a class=\"ds-top-link\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\"><path d=\"M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11\"/></g></svg>Library</a></header>",
+      "css": ".ds-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 3.5rem; padding: 0 32px; background: #0B0B0B; color: #FFFFFF; border-bottom: 2px solid #1A1A1A; font-family: var(--font, 'Fira Sans', sans-serif); } .ds-brand { font-weight: 700; font-size: 1.44rem; letter-spacing: -.01em; color: inherit; text-decoration: none; } .ds-top-link { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 4px; font-weight: 500; font-size: 1.2rem; color: inherit; text-decoration: none; } .ds-top-link svg { width: 1.5rem; height: 1.5rem; } .ds-top-link:hover { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .22em; text-decoration-color: #F1E8D0; } .ds-top a:focus-visible { outline: 3px solid #F1E8D0; outline-offset: 3px; }"
+    },
+    {
+      "name": "Clock",
+      "kind": "custom",
+      "refersTo": "band-live",
+      "description": "The recording mark over the monumental tabular counter.",
+      "html": "<div class=\"ds-clock\"><span class=\"ds-rec\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"6.75\" fill=\"currentColor\"/></svg>Recording</span><span class=\"ds-timer\">01:24</span></div>",
+      "css": ".ds-clock { display: grid; justify-items: end; gap: 10px; padding: 24px 32px; background: #0B0B0B; color: #FFFFFF; font-family: var(--font, 'Fira Sans', sans-serif); } .ds-rec { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 1.2rem; } .ds-rec svg { width: 1.1rem; height: 1.1rem; } .ds-timer { font-weight: 700; font-size: 6rem; line-height: .8; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Concourse Signs",
+    "overview": "Vignette is built like an international airport sign system. The page is a stack of full-width bands, one per step. The band you need now is cream; the steps not reached yet are narrow black panels; the steps you have finished stay as compact black bands with a check. Every control is a black inset square carrying a white pictogram, and primary actions lock that square to the end of a framed label, the way an arrow sits at the end of a gate sign. Numbers (the clock, the runtime, trim readouts, the register) are bold and tabular, set at monumental size where they are the proof that something is happening.\n\nThe world is flat and lit the same at every hour: there is no light variant, no shadow, no gradient, no radius anywhere except the webcam circle. Depth comes from paint, not from lift. Three surfaces (sign black, enamel cream, surface grey) each declare the colours their own controls draw with, so a square, a focus ring or a selection highlight is always the surface's opposite. Text is sentence case throughout; nothing is set in small caps or tracked uppercase. The memorable moment is a gate change: when recording starts, the current band repaints from cream to black and the counter runs in white.\n\nConfirmed rejections: the SaaS workspace of rounded cards, a sidebar and a blue button; decoration between the user and the Record button; a cold or clinical register. Em-dashes do not appear in copy.",
+    "keyCharacteristics": [
+      "Full-width sign bands as the only layout unit; one cream band at a time",
+      "Black inset squares with white pictograms as the control vocabulary, arrows locked to the band edge",
+      "One humanist sans (Fira Sans) in three weights, sentence case, 1.2 ratio scale",
+      "Bold tabular numerals at monumental size for clocks and runtimes",
+      "Flat, single scheme, zero radius, 2px rules; the only circle is the webcam bubble",
+      "Surface-scoped colour: each surface sets its own control, focus and selection colours"
+    ],
+    "rules": [
+      {
+        "name": "The One Cream Band Rule",
+        "body": "Exactly one band is cream on a recorder page: the step being taken. Finished and unreached steps are black. The share page's title band and the password gate count as that page's one current step. Never use cream as decoration, a badge, a hover fill on a cream surface, or on more than one band.",
+        "section": "colors"
+      },
+      {
+        "name": "The Surface Sets The Square Rule",
+        "body": "Every surface declares --sq-bg, --sq-fg, --line, --focus and --sel-bg. On black the square is cream with a black glyph; on cream and grey it is black with a white glyph. Never hard-code a control colour; inherit it from the surface the control sits on.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paired Tone Rule",
+        "body": "Secondary text has one tone per surface: Umber on cream, Ash on black, Slate on grey. Smoke is reserved for things that are not yet active (closed titles, unlit glyphs, column headings). Do not use the wrong pair to get a lighter grey.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numeral Rule",
+        "body": "Any element that shows a number that can change (time, output, .num, .tnum, band numbers, the clock, runtimes, file sizes, dates, the share URL) sets font-variant-numeric: tabular-nums. Numerals that are the proof of state (clock, runtime, clip length, register runtime) are also bold (700).",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "Every label, title, heading and button is sentence case in Fira Sans. No uppercase, no letterspaced labels, no kickers or eyebrows above a title. A band title is a number and a verb phrase, nothing more.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two-Weight Control Rule",
+        "body": "Controls are 500; headings and numerals-as-proof are 700; running text is 400. There is no 600 and no 300.",
+        "section": "typography"
+      },
+      {
+        "name": "The Band Is The Unit Rule",
+        "body": "New content is a new band or a row inside one. Do not introduce a card, a column of cards, a sidebar or a modal; the share page and the library are built from the same bands and wells.",
+        "section": "layout"
+      },
+      {
+        "name": "The Action At The Edge Rule",
+        "body": "The band's primary action sits at the right edge of the wrap on desktop and stretches to the full width of the band on phones. Tools sit between the title and the action, never above the title.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Concourse Rule",
+        "body": "No element casts a shadow at rest, and no hover or pressed state lifts anything. A pressed action darkens (Panel Frame), a hovered action inverts (line colour fill, surface colour text). Transitions are 150ms for controls and 200ms for band repaints, on cubic-bezier(.16, 1, .3, 1).",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do build every new surface from bands and wells on the three paints: black page, one cream current band, grey wells for media and inputs.",
+      "Do make every control a pictogram square (3rem toggles and quiet actions, 3.5rem primary actions, 2.75rem in done bands and the register) with a glyph from icons.svg at 2.75 stroke, square caps, miter joins.",
+      "Do lock the primary action's square to the end the arrow points to, with a negative 2px margin so it fills the frame.",
+      "Do set tabular-nums on every changing number and set numerals that prove state (clock, runtime, clip length) in 700.",
+      "Do keep the type ramp on its fixed 1.2 steps (0.875, 1, 1.2, 1.44, 1.728, 2.074, 2.488, 2.986rem) plus the 6rem clock; drop one step on phones rather than inventing a size.",
+      "Do inherit control colours from the surface (--sq-bg, --line, --focus, --sel-bg) and declare a new surface by setting those variables, never by styling the control.",
+      "Do use 2px rules (1px only inside tables), inset box-shadows for lines that must not change the box, and cubic-bezier(.16, 1, .3, 1) at 150ms for controls and 200ms for band repaints.",
+      "Do keep the fallback @font-face metrics with the font files and preload the 700 and 500 weights.",
+      "Do show state with a check glyph, a strike, a fill or a repaint; show loading as a travelling bar in the square or ghost rows in the register's shape."
+    ],
+    "donts": [
+      "Don't paint more than one band cream on a page, or use cream as a badge, a hover fill on cream, or a decorative accent.",
+      "Don't round a corner on anything but the webcam bubble; no radius, no pill, no rounded card.",
+      "Don't cast a shadow, add a gradient or lift anything on hover; invert or darken instead.",
+      "Don't add a light scheme or prefers-color-scheme branch; the concourse is lit the same at every hour.",
+      "Don't set text in uppercase, letterspaced labels, kickers or eyebrows; titles are a number and a sentence-case phrase.",
+      "Don't introduce a second typeface, a mono face, weight 300 or 600, or a system display face; Fira Sans 400 / 500 / 700 is the whole kit.",
+      "Don't use a sidebar, a card grid, a modal, a tab bar or a blue button; new content is a band or a row in one.",
+      "Don't load fonts, icons, scripts or styles from outside the Worker's own static files; every page runs under default-src 'none' with self-hosted assets and a per-request nonce for inline script.",
+      "Don't use a spinner; loading is the travelling bar or ghost rows.",
+      "Don't put an em-dash in any copy."
+    ]
+  }
+}

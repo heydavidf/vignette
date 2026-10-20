@@ -1,0 +1,122 @@
+/* Library page: a departures-board register on sign black. Rows share one
+   baseline; thumbnails sit at one fixed size; numbers are tabular.
+   Foundation and the sign band come from tokens.css. */
+
+.board { padding-block: 8px 72px; border-top: var(--line-w) solid var(--rule-dark); }
+
+.register { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.c-thumb { width: 192px; }
+.c-run { width: 7.5rem; }
+.c-size { width: 8rem; }
+.c-date { width: 15.5rem; }
+.c-status { width: 8.5rem; }
+.c-acts { width: 11.5rem; }
+.register th {
+  padding: 18px 16px 12px; text-align: left; font-weight: 500; font-size: var(--t0); color: var(--smoke);
+  border-bottom: var(--line-w) solid var(--rule-dark);
+}
+.register td {
+  padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid var(--rule-dark);
+  font-size: var(--t1); line-height: 1.3;
+}
+.register .r { text-align: right; }
+.register tbody tr { transition: background-color 150ms var(--ease); }
+.register tbody tr:hover { background: var(--frame); }
+
+.reg-img { display: grid; place-items: center; width: 160px; aspect-ratio: 16 / 9; background: var(--frame); color: var(--smoke); }
+.reg-img img { width: 100%; height: 100%; object-fit: cover; }
+.reg-img .glyph { width: 28px; height: 28px; }
+.reg-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reg-title a { text-decoration: none; }
+.reg-title a:hover { text-decoration: underline; text-decoration-color: var(--band); }
+.reg-run { font-weight: 700; font-variant-numeric: tabular-nums; }
+.reg-size, .reg-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reg-date { color: var(--ash); }
+.status { font-weight: 500; }
+.status.uploading { color: var(--smoke); }
+
+.reg-acts { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.sqbtn {
+  position: relative; display: inline-flex; align-items: center; padding: 0; border: 0;
+  background: transparent; color: var(--white); font-weight: 500; font-size: var(--t0);
+  text-decoration: none; cursor: pointer;
+}
+.sqbtn-sq {
+  display: grid; place-items: center; width: 2.75rem; height: 2.75rem;
+  box-shadow: inset 0 0 0 var(--line-w) var(--smoke); transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.sqbtn .glyph { width: 1.375rem; height: 1.375rem; }
+.sqbtn:hover .sqbtn-sq { background: var(--white); color: var(--black); box-shadow: none; }
+.sqbtn:active .sqbtn-sq { background: var(--grey); }
+/* Wide screens: pictogram only; the word stays as its accessible name. */
+.sqbtn-word {
+  position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.confirm { font-weight: 500; margin-right: 4px; }
+.word {
+  min-width: 3.25rem; min-height: 2.75rem; padding: 0 14px; border: 0; background: transparent; color: var(--white);
+  font-weight: 500; font-size: var(--t0); box-shadow: inset 0 0 0 var(--line-w) var(--white); cursor: pointer;
+}
+.word:hover { background: var(--frame); }
+.word--solid { background: var(--white); color: var(--black); }
+.word--solid:hover { background: var(--grey); }
+.word:disabled { cursor: not-allowed; opacity: .5; }
+.word[aria-busy="true"] { cursor: progress; }
+.reg-err { color: var(--white); font-size: var(--t0); }
+
+/* Loading: three ghost rows in the register's shape, not a spinner. */
+.skeleton { padding-top: 46px; }
+.skeleton i {
+  display: block; height: 119px; border-bottom: 1px solid var(--rule-dark);
+  background:
+    linear-gradient(var(--frame), var(--frame)) 16px 14px / 160px 90px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 224px 50px / min(32%, 360px) 18px no-repeat;
+}
+
+.board-msg { margin-top: 24px; }
+
+/* Empty: teach the first action. */
+.empty { display: grid; justify-items: start; gap: 16px; max-width: 40rem; padding-block: 56px 24px; }
+.empty-title { font-size: var(--t4); }
+.empty-text { font-size: var(--t1); line-height: 1.45; color: var(--ash); }
+.empty .act { margin-top: 8px; }
+
+/* Narrower screens: smaller plates; the status column goes (it is nearly always Ready). */
+@media (max-width: 1180px) and (min-width: 901px) {
+  .c-thumb { width: 152px; }
+  .c-date { width: 12rem; }
+  .c-status, .register th:nth-child(6), .reg-status { display: none; }
+  .reg-img { width: 120px; }
+}
+
+/* Phone and tablet width: each row recomposes into a small sign; nothing scrolls sideways. */
+@media (max-width: 900px) {
+  .register thead { display: none; }
+  .register, .register tbody { display: block; }
+  .register tbody tr {
+    display: grid; grid-template-columns: 112px repeat(2, auto) minmax(0, 1fr);
+    grid-template-areas: "thumb title title title" "thumb run size status" "thumb date date date" "acts acts acts acts";
+    column-gap: 14px; row-gap: 2px; padding-block: 16px; border-bottom: 1px solid var(--rule-dark);
+  }
+  .register td { display: block; padding: 0; border: 0; font-size: var(--t0); }
+  .reg-thumb { grid-area: thumb; }
+  .reg-img { width: 112px; }
+  .reg-title {
+    grid-area: title; font-size: var(--t1); margin-bottom: 4px; white-space: normal; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  }
+  .reg-run { grid-area: run; text-align: left !important; }
+  .reg-size { grid-area: size; text-align: left !important; color: var(--ash); }
+  .reg-status { grid-area: status; justify-self: end; }
+  .reg-date { grid-area: date; font-size: var(--t-small); }
+  .reg-actions { grid-area: acts; margin-top: 12px; }
+  .reg-acts { justify-content: flex-start; flex-wrap: wrap; gap: 8px 20px; }
+  /* Stacked: each pictogram carries its word, as on the signs. */
+  .sqbtn-word { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; padding-left: 10px; }
+  .sqbtn:hover .sqbtn-word { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .22em; }
+  .skeleton { padding-top: 8px; }
+  .skeleton i { height: 104px; background:
+    linear-gradient(var(--frame), var(--frame)) 0 16px / 112px 63px no-repeat,
+    linear-gradient(var(--frame), var(--frame)) 126px 22px / 50% 16px no-repeat; }
+}

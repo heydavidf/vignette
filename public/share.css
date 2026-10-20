@@ -1,0 +1,43 @@
+/* Share page (/v/<id>), rendered by worker/index.js. Black header strip,
+   a cream band with the title and runtime, the video in a grey well,
+   then Copy link and Download. Foundation comes from tokens.css. */
+
+.title-band { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 32px; padding-block: 28px; }
+.title-band h1 { font-size: var(--t4); letter-spacing: -.012em; overflow-wrap: anywhere; }
+.runtime { font-weight: 700; font-size: var(--t6); line-height: .85; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+
+.well { padding-block: 24px 32px; }
+.screen { display: grid; justify-items: center; }
+.screen video {
+  width: min(100%, calc(76vh * var(--ar, 1.7778))); height: auto;
+  background: var(--frame); outline: var(--line-w) solid var(--frame);
+}
+.share-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; margin-top: 24px; }
+.share-acts { display: flex; flex-wrap: wrap; gap: 12px 16px; }
+.facts { display: flex; gap: 8px 24px; font-size: var(--t1); color: var(--slate); font-variant-numeric: tabular-nums; }
+.facts span:first-child { color: var(--black); font-weight: 500; }
+#copied:empty { display: none; }
+#copied { margin-top: 12px; font-size: var(--t0); }
+
+.foot { padding-block: 24px 40px; color: var(--ash); border-top: var(--line-w) solid var(--rule-dark); }
+
+/* Not found: one black panel that says what happened and what to do. */
+.nf { padding-block: 48px; }
+.nf .msg { max-width: 44rem; padding: 24px; gap: 16px; }
+.nf .msg > .glyph { width: 2rem; height: 2rem; }
+.nf h1 { font-size: var(--t4); margin-bottom: 8px; }
+.nf p { font-size: var(--t1); color: var(--ash); }
+
+@media (max-width: 720px) {
+  .title-band { padding-block: 20px; }
+  .title-band h1 { font-size: var(--t3); }
+  .runtime { font-size: var(--t5); }
+  .well { padding-block: 0 24px; }
+  .well .wrap { padding-inline: 0; }
+  .screen video { width: 100%; outline: 0; }
+  .share-row, #copied { padding-inline: var(--gutter); }
+  .share-row { margin-top: 20px; }
+  .share-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); width: 100%; }
+  .share-acts .act { width: 100%; }
+  .share-acts .act-label { flex: 1; padding-inline: 14px; }
+}

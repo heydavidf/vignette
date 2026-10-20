@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Keep this title exactly "Vignette": the automated test picks this tab to record by its title. -->
+  <title>Vignette</title>
+  <meta name="theme-color" content="#0B0B0B">
+  <link rel="preload" href="/vendor/fonts/fira-sans-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/vendor/fonts/fira-sans-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="/">Vignette</a>
+      <a class="top-link" href="/library"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-library"/></svg>Library</a>
+    </div>
+  </header>
+
+  <main>
+    <h1 class="vh">Vignette recorder</h1>
+    <form id="gate" class="band gate on-band" hidden>
+      <div class="wrap band-grid">
+        <h2 class="band-title">Owner password</h2>
+        <p class="band-note">Enter the password you set for this Vignette. This browser remembers it.</p>
+        <div class="gate-row">
+          <input id="password" type="password" autocomplete="current-password" aria-label="Password" required>
+          <button type="submit" class="act"><span class="act-label">Continue</span><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-right"/></svg></span></button>
+        </div>
+        <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p class="error" role="alert"></p></div>
+      </div>
+    </form>
+
+    <div id="app" hidden>
+      <section id="band1" class="band" data-state="current" aria-labelledby="band1Title">
+        <div class="wrap band-grid">
+          <h2 class="band-title" id="band1Title"><svg class="glyph band-check" aria-hidden="true"><use href="/icons.svg#i-check"/></svg><span class="band-num">1</span> Set up</h2>
+          <p id="source" class="band-note">Nothing shared yet.</p>
+          <div id="setupStep" class="band-tools">
+            <div class="cam-group">
+              <label class="toggle">
+                <span class="sq tg"><input id="cam" type="checkbox" checked><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-camera"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
+                <span class="toggle-label">Webcam bubble</span>
+              </label>
+              <fieldset id="sizes" class="sizes">
+                <legend class="vh">Bubble size</legend>
+                <label class="seg" title="Small"><input type="radio" name="bubbleSize" value="small"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-s"/></svg><span class="vh">Small</span></label>
+                <label class="seg" title="Medium"><input type="radio" name="bubbleSize" value="medium"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-m"/></svg><span class="vh">Medium</span></label>
+                <label class="seg" title="Large"><input type="radio" name="bubbleSize" value="large"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-l"/></svg><span class="vh">Large</span></label>
+              </fieldset>
+            </div>
+            <label class="toggle">
+              <span class="sq tg"><input id="mic" type="checkbox" checked><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-mic"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
+              <span class="toggle-label">Microphone</span>
+            </label>
+          </div>
+          <button id="share" type="button" class="act band-action">
+            <span class="act-label"><span class="if-open">Share screen</span><span class="if-done">Share again</span></span>
+            <span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-right"/></svg></span>
+          </button>
+          <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="setupMsg" role="status"></p></div>
+        </div>
+      </section>
+
+      <section id="stage" class="stage on-grey" aria-label="Preview">
+        <div class="wrap stage-grid">
+          <div class="monitor">
+            <div id="frame" class="frame" data-source="empty">
+              <p class="frame-empty">Your screen shows here once you share it. <br>Drag the circle to place your webcam.</p>
+              <canvas id="canvas" width="1280" height="720" hidden></canvas>
+              <video id="screenVideo" class="helper" muted playsinline></video>
+              <div id="bubble" class="bubble" tabindex="0" role="button" aria-label="Webcam bubble" aria-describedby="bubbleHelp" data-live="false" data-cam="on">
+                <video id="bubbleVideo" muted playsinline></video>
+                <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-camera"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg>
+              </div>
+              <p id="bubbleHelp" class="vh">Drag it, or use the arrow keys, to move it. It is recorded where you put it.</p>
+              <div id="countdown" class="countdown" hidden><span id="flap" class="flap" aria-live="assertive"></span></div>
+            </div>
+          </div>
+          <div class="clock">
+            <span id="recDot" class="rec" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg>Recording</span>
+            <span id="timer" class="timer" role="timer">00:00</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="band2" class="band" data-state="closed" aria-labelledby="band2Title">
+        <div class="wrap band-grid">
+          <h2 class="band-title" id="band2Title"><svg class="glyph band-check" aria-hidden="true"><use href="/icons.svg#i-check"/></svg><span class="band-num">2</span> Record</h2>
+          <p id="recordSummary" class="band-note if-done"></p>
+          <div id="recordStep" class="band-body" hidden>
+            <p class="band-note if-open">A 3 second countdown runs first. Work in any tab; recording carries on.</p>
+            <p class="band-note if-live">Recording. Stop when you are done.</p>
+            <div class="band-action">
+              <button id="start" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Start recording</span></button>
+              <button id="stop" type="button" class="act" disabled><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-stop"/></svg></span><span class="act-label">Stop</span></button>
+            </div>
+            <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="recordMsg" role="status"></p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="band3" class="band" data-state="closed" aria-labelledby="band3Title">
+        <div class="wrap band-grid">
+          <h2 class="band-title" id="band3Title"><span class="band-num">3</span> Share</h2>
+          <div id="editStep" class="band-body" hidden>
+            <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="editMsg" role="status"></p></div>
+            <div id="editBody" class="editor" hidden>
+              <div class="editor-main">
+                <div class="player on-grey"><video id="preview" controls playsinline preload="auto"></video></div>
+                <div id="trim" class="trim">
+                  <div class="trim-bar">
+                    <div id="cutMarks" class="trim-cuts" aria-hidden="true"></div>
+                    <input id="trimStart" type="range" min="0" max="0" step="any" value="0" aria-label="Start of the clip">
+                    <input id="trimEnd" type="range" min="0" max="0" step="any" value="0" aria-label="End of the clip">
+                  </div>
+                  <div class="trim-read num">
+                    <span>Start <output id="trimStartOut">0:00.0</output></span>
+                    <span id="trimLength">Clip length 0:00.0</span>
+                    <span>End <output id="trimEndOut">0:00.0</output></span>
+                  </div>
+                  <div class="trim-acts">
+                    <button id="setStart" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-mark-start"/></svg></span><span class="act-label">Set start here</span></button>
+                    <button id="setEnd" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-mark-end"/></svg></span><span class="act-label">Set end here</span></button>
+                  </div>
+                  <div class="trim-acts">
+                    <button id="cutFrom" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-cut-from"/></svg></span><span class="act-label">Cut from here</span></button>
+                    <button id="cutTo" type="button" class="act act--quiet" disabled><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-cut-to"/></svg></span><span class="act-label">Cut to here</span></button>
+                  </div>
+                  <div class="msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="cutMsg" role="status"></p></div>
+                  <ol id="cutList" class="cut-list num" aria-label="Cuts" hidden></ol>
+                </div>
+              </div>
+              <div class="editor-side">
+                <label class="field"><span class="field-label">Title</span><input id="title" type="text" maxlength="200"></label>
+                <div class="field thumb">
+                  <span class="field-label">Thumbnail</span>
+                  <div class="thumb-row">
+                    <span id="thumbPlate" class="thumb-plate"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-frame"/></svg></span>
+                    <button id="useFrame" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-frame"/></svg></span><span class="act-label">Use current frame</span></button>
+                  </div>
+                  <div class="msg"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="thumbMsg">Default: 1 second into the trimmed video.</p></div>
+                </div>
+                <div id="uploadStep" class="upload" hidden>
+                  <div id="uploadActs" class="upload-acts">
+                    <button id="upload" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Upload and get link</span></button>
+                    <button id="download" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-download"/></svg></span><span class="act-label">Download MP4</span></button>
+                    <a id="downloadLink" hidden download="vignette.mp4">Download</a>
+                  </div>
+                  <progress id="progress" max="1" value="0" hidden></progress>
+                  <div class="msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="uploadMsg" role="status"></p></div>
+                  <button id="retry" type="button" class="act" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Retry upload</span></button>
+                  <div id="shareBox" class="gate-link" hidden>
+                    <textarea id="shareUrl" rows="2" readonly spellcheck="false" aria-label="Share link"></textarea>
+                    <button id="copy" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-copy"/></svg></span><span id="copyLabel" class="act-label">Copy link</span></button>
+                    <div id="linkActs" class="link-acts">
+                      <a id="open" class="act act--quiet" target="_blank" rel="noopener"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-out"/></svg></span><span class="act-label">Open</span></a>
+                      <a class="act act--quiet" href="/"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Record another</span></a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <details class="details">
+        <summary><span class="wrap details-sum">Details<svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-down"/></svg></span></summary>
+        <div class="wrap details-body">
+          <p>What the browser actually did. Paste this into bug reports.</p>
+          <pre id="details"></pre>
+        </div>
+      </details>
+    </div>
+  </main>
+
+  <!-- Feeds the webcam bubble. Kept in the layout (not display:none) so Safari keeps decoding it. -->
+  <video id="camVideo" class="helper" muted playsinline></video>
+  <script type="module" src="/recorder.js"></script>
+</body>
+</html>

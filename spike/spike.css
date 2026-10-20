@@ -1,0 +1,42 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --ink: #e8e9ec;
+  --muted: #8b90a0;
+  --accent: #ff5c5c;
+  --accent-ink: #fff;
+  --line: #262a34;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 900px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 28px; margin: 0 0 4px; }
+h2 { font-size: 16px; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.tag { font-size: 12px; background: var(--accent); color: var(--accent-ink); padding: 2px 8px; border-radius: 999px; vertical-align: middle; }
+.lede { color: var(--muted); margin: 0 0 24px; }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+button, .button {
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px;
+  padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+button:disabled { opacity: .4; cursor: not-allowed; }
+#stop { background: #2a2e3a; }
+label { display: inline-flex; align-items: center; gap: 6px; }
+.muted { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+.timer { font-variant-numeric: tabular-nums; font-weight: 700; }
+canvas { width: 100%; height: auto; margin-top: 12px; background: #000; border-radius: 8px; }
+video#preview { width: 100%; background: #000; border-radius: 8px; }
+.trim { display: grid; gap: 8px; margin: 12px 0; }
+.trim label { display: grid; grid-template-columns: 56px 1fr 72px; align-items: center; gap: 8px; }
+input[type=range] { width: 100%; }
+progress { flex: 1; min-width: 120px; }
+pre { white-space: pre-wrap; font-size: 13px; color: var(--muted); margin: 0; }
+/* Helper videos feed the canvas. Safari stops decoding display:none videos, so keep them in the layout but invisible. */
+.helper { position: fixed; left: 0; top: 0; width: 2px; height: 2px; opacity: 0.01; pointer-events: none; }

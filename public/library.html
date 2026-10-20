@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Library - Vignette</title>
+  <meta name="theme-color" content="#0B0B0B">
+  <link rel="preload" href="/vendor/fonts/fira-sans-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/vendor/fonts/fira-sans-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/tokens.css">
+  <link rel="stylesheet" href="/library.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="/">Vignette</a>
+      <a class="top-link" href="/"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg>Record</a>
+    </div>
+  </header>
+
+  <main>
+    <form id="gate" class="band gate on-band" hidden>
+      <div class="wrap band-grid">
+        <h2 class="band-title">Owner password</h2>
+        <p class="band-note">Enter the password you set for this Vignette. This browser remembers it.</p>
+        <div class="gate-row">
+          <input id="password" type="password" autocomplete="current-password" aria-label="Password" required>
+          <button type="submit" class="act"><span class="act-label">Continue</span><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-right"/></svg></span></button>
+        </div>
+        <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p class="error" role="alert"></p></div>
+      </div>
+    </form>
+
+    <div id="app" hidden>
+      <section class="band" data-state="current" aria-labelledby="libTitle">
+        <div class="wrap band-grid">
+          <h1 class="band-title" id="libTitle">Library</h1>
+          <p id="count" class="band-note">Your recordings, newest first.</p>
+          <a id="newRec" class="act band-action" href="/" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">New recording</span></a>
+        </div>
+      </section>
+
+      <section class="board" aria-labelledby="libTitle">
+        <div class="wrap">
+          <div id="status" class="skeleton" role="status"><span class="vh">Loading your recordings</span><i></i><i></i><i></i></div>
+          <div class="msg board-msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="loadMsg" role="alert"></p></div>
+          <div id="empty" class="empty" hidden>
+            <h2 class="empty-title">No recordings yet</h2>
+            <p class="empty-text">Record your screen on the Record page. When you upload it, the recording and its link appear here, ready to copy.</p>
+            <a class="act" href="/"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Record your first one</span></a>
+          </div>
+          <table id="table" class="register" hidden>
+            <caption class="vh">Your recordings, newest first</caption>
+            <colgroup><col class="c-thumb"><col class="c-title"><col class="c-run"><col class="c-size"><col class="c-date"><col class="c-status"><col class="c-acts"></colgroup>
+            <thead>
+              <tr><th scope="col"><span class="vh">Thumbnail</span></th><th scope="col">Recording</th><th scope="col" class="r">Runtime</th><th scope="col" class="r">Size</th><th scope="col">Date</th><th scope="col">Status</th><th scope="col"><span class="vh">Actions</span></th></tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p id="announce" class="vh" aria-live="polite"></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/library.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for local development (`npm run dev`).
+# .dev.vars is gitignored. In production, set the password with:
+#   npx wrangler secret put VIGNETTE_PASSWORD
+VIGNETTE_PASSWORD=dev

@@ -1,0 +1,30 @@
+name = "vignette"
+main = "worker/index.js"
+compatibility_date = "2026-10-01"
+
+# Files in ./public are served directly. Requests that match no file
+# (the API, share pages, media) fall through to worker/index.js.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+not_found_handling = "none"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "vignette-media"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vignette"
+# Replace this value with the id printed by `npx wrangler d1 create vignette`.
+# Local development (`npm run dev`, `npm test`) works with the placeholder.
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+[vars]
+MAX_UPLOAD_MB = "2000"
+
+# Share pages inline the pictogram sprite (public/icons.svg), imported as text.
+[[rules]]
+type = "Text"
+globs = ["**/*.svg"]
+fallthrough = true

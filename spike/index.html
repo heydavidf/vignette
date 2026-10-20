@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vignette spike</title>
+  <link rel="stylesheet" href="spike.css">
+</head>
+<body>
+  <main>
+    <h1>Vignette <span class="tag">spike</span></h1>
+    <p class="lede">Proof that a plain browser page can record your screen with a webcam bubble, trim it, and save a seekable MP4. No install, no account, no server.</p>
+
+    <section id="setup">
+      <h2>1. Pick what to record</h2>
+      <div class="row">
+        <button id="share" type="button">Share screen, window or tab</button>
+        <label><input id="cam" type="checkbox" checked> Webcam bubble</label>
+        <label><input id="mic" type="checkbox" checked> Microphone</label>
+      </div>
+      <p id="source" class="muted">Nothing shared yet.</p>
+    </section>
+
+    <section id="recordSection">
+      <h2>2. Record</h2>
+      <div class="row">
+        <button id="record" type="button" disabled>Start recording</button>
+        <button id="stop" type="button" disabled>Stop</button>
+        <span id="timer" class="timer">00:00</span>
+      </div>
+      <canvas id="canvas" width="1280" height="720"></canvas>
+      <p id="recInfo" class="muted"></p>
+    </section>
+
+    <section id="editSection" hidden>
+      <h2>3. Trim and export</h2>
+      <video id="preview" controls playsinline></video>
+      <div class="trim">
+        <label>Start <input id="trimStart" type="range" min="0" max="0" step="0.1" value="0"> <output id="trimStartOut">0.0s</output></label>
+        <label>End <input id="trimEnd" type="range" min="0" max="0" step="0.1" value="0"> <output id="trimEndOut">0.0s</output></label>
+      </div>
+      <div class="row">
+        <button id="export" type="button">Export MP4</button>
+        <progress id="progress" max="1" value="0" hidden></progress>
+        <a id="download" class="button" hidden download="vignette.mp4">Download</a>
+      </div>
+      <p id="exportInfo" class="muted"></p>
+    </section>
+
+    <section>
+      <h2>Findings</h2>
+      <pre id="log"></pre>
+    </section>
+  </main>
+
+  <video id="screenVideo" class="helper" muted playsinline autoplay></video>
+  <video id="camVideo" class="helper" muted playsinline autoplay></video>
+  <script type="module" src="spike.js"></script>
+</body>
+</html>

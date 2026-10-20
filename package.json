@@ -1,0 +1,22 @@
+{
+  "name": "vignette",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source screen recorder that runs in the browser. Record, trim, cut, upload to your own Cloudflare account, share a link.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/wrangler.mjs dev",
+    "deploy": "node scripts/wrangler.mjs deploy",
+    "db:init": "node scripts/wrangler.mjs d1 execute vignette --remote --file=schema.sql",
+    "db:init:local": "node scripts/wrangler.mjs d1 execute vignette --local --file=schema.sql",
+    "test": "node test/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0",
+    "wrangler": "4.151.2"
+  }
+}

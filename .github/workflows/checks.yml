@@ -1,0 +1,66 @@
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install (lockfile must match, no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Browser for the end-to-end test
+        run: npx playwright install --with-deps chromium
+
+      - name: Syntax check every script
+        run: for f in worker/index.js public/*.js test/*.mjs; do node --check "$f"; done
+
+      - name: Tripwire self-test
+        run: node --test test/tripwire.test.mjs
+
+      - name: End-to-end test (local Cloudflare emulator, fake camera and screen)
+        run: npm test
+
+      - name: End-to-end test with the tab in the background
+        run: BACKGROUND=1 npm test
+
+      - name: Known vulnerabilities (high and above, development tools included)
+        run: npm audit --audit-level=high
+
+      - name: Tripwire (personal paths, junk files, silenced checks)
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE_REF" ] && git cat-file -e "$BASE_REF" 2>/dev/null; then bash .github/tripwire.sh "$BASE_REF"; else echo "::warning::no base commit for this event, so the silenced-check scan of added lines is skipped"; bash .github/tripwire.sh; fi
+
+      - name: Secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

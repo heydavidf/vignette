@@ -1,0 +1,12 @@
+node_modules/
+.wrangler/
+.dev.vars
+wrangler.local.toml
+*.mp4
+*.webm
+.DS_Store
+.impeccable/review/
+.impeccable/reference/
+.impeccable/build/
+.impeccable/questions/
+.impeccable/decision-direction.json

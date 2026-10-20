@@ -1,0 +1,255 @@
+/* Recorder page. A chain of full-width sign bands: the current step is the
+   one cream band; steps not reached yet are narrow closed panels; finished
+   steps stay, compact, with a check. The preview well sits under step 1.
+   Foundation (font, palette, controls) lives in tokens.css. */
+
+/* ---------- Band states ----------
+   Closed: a narrow panel naming a step not reached yet. */
+.band[data-state="closed"] .band-grid { padding-block: 14px; row-gap: 0; }
+.band[data-state="closed"] .band-title { color: var(--smoke); }
+
+/* Done: compact, checked, still usable where it matters (share again, toggles). */
+.band[data-state="done"] .band-grid {
+  padding-block: 10px; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "title note tools action" "alert alert alert alert";
+}
+.band[data-state="done"] .band-check { display: block; }
+.band[data-state="done"] .band-note { font-size: var(--t0); }
+.band[data-state="done"] .if-open, .band[data-state="live"] .if-open { display: none; }
+.band[data-state="done"] .if-done, .band[data-state="live"] .if-live { display: revert; }
+.band[data-state="done"] .band-tools { gap: 12px 20px; }
+.band[data-state="done"] .toggle { font-size: var(--t0); }
+.band[data-state="done"] .tg, .band[data-state="done"] .seg { --sq: 2.75rem; }
+
+/* Current and live: the step being taken. */
+.band[data-state="current"] .band-grid, .band[data-state="live"] .band-grid { padding-block: 28px; }
+.band[data-state="live"] { border-top-color: var(--black); }
+.band[data-state="live"] #start, .band:not([data-state="live"]) #stop { display: none; }
+/* While recording, step 1 reads as a finished sign: check, title, note. */
+#app:has(#band2[data-state="live"]) #band1 :is(.band-tools, .band-action) { display: none; }
+
+/* ---------- Toggles: a black plate, lit (white glyph) or unlit (struck) ---------- */
+.toggle { display: inline-flex; align-items: center; gap: 12px; min-height: var(--sq); font-weight: 500; font-size: var(--t1); cursor: pointer; }
+.tg { position: relative; background: var(--tg-bg); color: var(--white); box-shadow: inset 0 0 0 var(--line-w) var(--tg-line); }
+.tg input, .seg input {
+  appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  border: 0; border-radius: 0; background: transparent; cursor: pointer;
+}
+.tg .glyph, .seg .glyph { position: relative; pointer-events: none; }
+.knock, .strike { display: none; fill: none; stroke-linecap: square; }
+.knock { stroke: var(--tg-bg); stroke-width: 7; }
+.strike { stroke: currentColor; stroke-width: 2.75; }
+.tg input:not(:checked) ~ .glyph { color: var(--smoke); }
+.tg input:not(:checked) ~ .glyph :is(.knock, .strike) { display: inline; }
+.toggle:hover .toggle-label { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .22em; }
+.toggle:has(input:disabled) { cursor: not-allowed; color: color-mix(in srgb, var(--fg) 45%, transparent); }
+.toggle:has(input:disabled) .toggle-label { text-decoration: none; }
+.tg input:active:not(:disabled) ~ .glyph, .seg input:active ~ .glyph { transform: scale(.86); }
+.tg input:disabled { cursor: not-allowed; }
+.tg:has(input:disabled) { opacity: .5; }
+
+/* Bubble size: three plates in a strip; the chosen one is filled. */
+.sizes { display: inline-flex; margin: 0; padding: 0; border: 0; min-width: 0; }
+.seg { position: relative; display: grid; place-items: center; width: var(--sq); height: var(--sq); color: var(--fg); box-shadow: inset 0 0 0 var(--line-w) var(--line); }
+.seg + .seg { margin-left: calc(-1 * var(--line-w)); }
+.seg .glyph { width: 50%; height: 50%; }
+.seg input:hover:not(:checked) { box-shadow: inset 0 0 0 4px var(--line); }
+.seg input:checked { background: var(--fg); }
+.seg input:checked ~ .glyph { color: var(--sq-fg); }
+.on-black .seg input:checked ~ .glyph, .band:not([data-state="current"]) .seg input:checked ~ .glyph { color: var(--black); }
+.cam-group { display: flex; align-items: center; gap: 12px 14px; }
+.seg input:focus-visible { z-index: 1; }
+
+/* ---------- Stage: the preview well and the clock ---------- */
+.stage { padding-block: 24px; border-top: var(--line-w) solid var(--rule-dark); transition: background-color 200ms var(--ease), color 200ms var(--ease); }
+.stage-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 20px 32px; }
+/* The well fills its column, up to 60vh tall. The frame inside is the picture
+   itself, always the shape of what is shared (16:9 before anything is), so
+   the bubble keeps its place when the screen arrives and the canvas and the
+   recording share one set of edges. Spare width is grey, or black when live. */
+.monitor {
+  --ar: 1.7778;
+  display: flex; justify-content: center; width: 100%; aspect-ratio: var(--ar); max-height: 60vh;
+  background: var(--grey); box-shadow: inset 0 0 0 var(--line-w) var(--frame); container-type: size;
+}
+.monitor:has(> .frame[data-source="live"]) { background: var(--black); box-shadow: none; }
+.frame { position: relative; flex: none; height: 100%; max-width: 100%; aspect-ratio: var(--ar); overflow: hidden; }
+.frame[data-source="empty"] { box-shadow: inset var(--line-w) 0 0 var(--frame), inset calc(-1 * var(--line-w)) 0 0 var(--frame); }
+.frame-empty {
+  position: absolute; inset: 0; display: grid; place-content: center; padding: 24px;
+  text-align: center; font-size: var(--t1); line-height: 1.4; color: var(--slate); text-wrap: balance;
+}
+.frame[data-source="live"] .frame-empty { display: none; }
+#canvas, #screenVideo:not(.helper) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--black); }
+/* Helper videos feed the canvas. Safari stops decoding display:none videos,
+   so keep them in the layout but invisible. */
+.helper, #screenVideo.helper {
+  position: fixed; left: 0; top: 0; width: 2px; height: 2px; max-width: none;
+  opacity: .01; pointer-events: none;
+}
+
+.clock { display: grid; justify-items: end; gap: 10px; }
+.timer {
+  font-weight: 700; font-size: var(--t-clock); line-height: .8; letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums; color: var(--fg);
+}
+.rec { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: var(--t1); }
+.rec .glyph { width: 1.1rem; height: 1.1rem; color: var(--vermilion); }
+
+/* ---------- Webcam bubble (positioned by bubble.js) ---------- */
+.bubble {
+  --tg-bg: var(--grey);
+  position: absolute; z-index: 2; left: calc(var(--bx, .14) * 100%); top: calc(var(--by, .75) * 100%);
+  width: calc(var(--bd, .25) * 100%); aspect-ratio: 1; translate: -50% -50%;
+  border-radius: 50%; background: var(--black); color: var(--black);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.bubble::before { content: ""; position: absolute; inset: 3%; border-radius: 50%; background: var(--grey); }
+.bubble video { position: absolute; inset: 3%; width: 94%; height: 94%; border-radius: 50%; object-fit: cover; background: var(--frame); display: none; }
+.bubble > .glyph { position: absolute; inset: 0; margin: auto; width: 32%; height: 32%; }
+.bubble[data-cam="off"] > .glyph { color: var(--slate); }
+.bubble[data-cam="off"] > .glyph :is(.knock, .strike) { display: inline; }
+.bubble[data-live="true"] video { display: block; }
+.bubble[data-live="true"]::before, .bubble[data-live="true"] > .glyph { display: none; }
+.bubble:hover { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
+.bubble:focus-visible { outline-offset: 4px; }
+.bubble.dragging { cursor: grabbing; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg), 0 10px 24px rgb(0 0 0 / .35); }
+
+/* ---------- Countdown: one split-flap number change ---------- */
+.countdown { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: rgb(11 11 11 / .6); }
+.flap {
+  position: relative; display: grid; place-items: center; width: 1.3em; height: 1.3em;
+  font-weight: 700; font-size: min(36cqh, 20cqw); line-height: 1; font-variant-numeric: tabular-nums;
+  color: var(--white); background: var(--black); perspective: 3em;
+  -webkit-mask: linear-gradient(#000 0 calc(50% - 2px), transparent 0 calc(50% + 2px), #000 0);
+  mask: linear-gradient(#000 0 calc(50% - 2px), transparent 0 calc(50% + 2px), #000 0);
+}
+.flap::before, .flap::after { position: absolute; inset: 0; display: grid; place-items: center; background: var(--black); backface-visibility: hidden; }
+.flap::before { content: attr(data-from); clip-path: inset(0 0 50% 0); transform: rotateX(-90deg); }
+.flap::after { content: attr(data-to); clip-path: inset(50% 0 0 0); }
+.flap.flipping::before { animation: flap-top 200ms cubic-bezier(.55, 0, .9, .4) both; }
+.flap.flipping::after { animation: flap-bottom 200ms var(--ease) both; }
+@keyframes flap-top { from { transform: rotateX(0); filter: brightness(1); } 50%, to { transform: rotateX(-90deg); filter: brightness(.35); } }
+@keyframes flap-bottom { 0%, 50% { transform: rotateX(90deg); filter: brightness(.35); } to { transform: rotateX(0); filter: brightness(1); } }
+
+/* ---------- Step 3: edit and share ---------- */
+#band3 .band-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "body"; }
+#band3 #editStep { grid-area: body; display: grid; gap: 16px; padding-top: 12px; }
+#band3 .band-alert { margin-top: 0; }
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 24px 40px; align-items: start; }
+.player { padding: 12px; }
+#preview { width: 100%; max-height: 58vh; aspect-ratio: 16 / 9; background: var(--frame); }
+
+.trim { display: grid; gap: 10px; margin-top: 20px; }
+.trim-bar {
+  --pa: 0; --pb: 1; --hw: 18px;
+  --a: calc(var(--pa) * (100% - var(--hw)) + var(--hw) / 2);
+  --b: calc(var(--pb) * (100% - var(--hw)) + var(--hw) / 2);
+  position: relative; height: 48px;
+  background:
+    linear-gradient(to right, transparent var(--a), var(--black) var(--a) var(--b), transparent var(--b)) center / 100% 14px no-repeat,
+    linear-gradient(rgb(11 11 11 / .22), rgb(11 11 11 / .22)) center / 100% 14px no-repeat;
+}
+.trim-bar input[type=range] {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  appearance: none; -webkit-appearance: none; background: transparent; pointer-events: none;
+}
+.trim-bar input[type=range]:focus-visible { outline: none; }
+.trim-bar input::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.trim-bar input::-moz-range-track { height: 100%; background: transparent; }
+.trim-bar input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; pointer-events: auto; cursor: ew-resize;
+  width: var(--hw); height: 48px; border: 0; border-radius: 0;
+  background: var(--black) linear-gradient(var(--white), var(--white)) center / 2px 22px no-repeat;
+}
+.trim-bar input::-moz-range-thumb {
+  pointer-events: auto; cursor: ew-resize; width: var(--hw); height: 48px; border: 0; border-radius: 0;
+  background: var(--black) linear-gradient(var(--white), var(--white)) center / 2px 22px no-repeat;
+}
+.trim-bar input:hover::-webkit-slider-thumb { background-color: var(--frame); }
+.trim-bar input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--focus); }
+.trim-bar input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--focus); }
+.trim-read { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t1); }
+.trim-read output, #trimLength { font-weight: 700; }
+#trimLength { color: var(--fg); }
+.trim-acts { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+
+/* Cuts. On the bar a cut is the track knocked out to the surface and struck
+   through with a 2px rule between two end ticks: a struck rule means removed.
+   A tick taller than the track marks where a cut being marked starts. */
+.trim-cuts { position: absolute; inset: 0; pointer-events: none; }
+.trim-cut, .trim-mark { position: absolute; top: 50%; left: calc(var(--ca) * (100% - var(--hw)) + var(--hw) / 2); }
+.trim-cut {
+  width: calc((var(--cb) - var(--ca)) * (100% - var(--hw))); height: 14px; translate: 0 -50%;
+  background: linear-gradient(var(--fg), var(--fg)) center / 100% var(--line-w) no-repeat, var(--surface);
+  box-shadow: inset var(--line-w) 0 0 var(--fg), inset calc(-1 * var(--line-w)) 0 0 var(--fg);
+}
+.trim-mark { width: var(--line-w); height: 30px; translate: -50% -50%; background: var(--fg); }
+.cut-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cut-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: var(--t1); }
+.cut-name { font-weight: 500; }
+.cut-span { font-weight: 700; }
+.cut-len { color: var(--fg-2); }
+.cut-remove { margin-left: auto; }
+
+.editor-side { display: grid; gap: 24px; }
+.field { display: grid; gap: 8px; }
+.field-label { font-weight: 500; font-size: var(--t0); }
+.field input { width: 100%; }
+.thumb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.thumb-plate { display: grid; place-items: center; width: 176px; aspect-ratio: 16 / 9; background: var(--frame); color: var(--smoke); outline: var(--line-w) solid var(--black); }
+.thumb-plate .glyph { width: 28px; height: 28px; }
+#thumbImg { width: 100%; height: 100%; object-fit: cover; }
+.thumb .msg { font-size: var(--t-small); }
+
+.upload { display: grid; gap: 14px; padding-top: 24px; border-top: var(--line-w) solid var(--black); }
+.upload-acts { display: grid; gap: 10px; justify-items: start; }
+#upload { width: 100%; }
+#upload .act-label { flex: 1; }
+progress { appearance: none; -webkit-appearance: none; width: 100%; height: 12px; border: 0; background: rgb(11 11 11 / .22); color: var(--black); }
+progress::-webkit-progress-bar { background: rgb(11 11 11 / .22); }
+progress::-webkit-progress-value { background: var(--black); }
+progress::-moz-progress-bar { background: var(--black); }
+.gate-link { display: grid; gap: 14px; }
+#shareUrl {
+  display: block; width: 100%; min-height: 0; padding: 14px 16px; border: 0; border-radius: 0; resize: none;
+  field-sizing: content; overflow: hidden; word-break: break-all;
+  background: var(--black); color: var(--white); caret-color: var(--vermilion);
+  font: 500 var(--t2)/1.3 var(--font); font-variant-numeric: tabular-nums;
+  --sel-bg: var(--vermilion); --sel-fg: var(--white);
+}
+.upload:has(#shareBox:not([hidden])) .upload-acts { display: none; }
+.upload:has(#shareBox:not([hidden])) #uploadMsg { color: var(--fg); font-weight: 500; }
+.link-acts { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+#copy { justify-self: start; }
+
+/* ---------- Details ---------- */
+.details { border-top: var(--line-w) solid var(--rule-dark); background: var(--black); }
+.details summary { list-style: none; cursor: pointer; }
+.details summary::-webkit-details-marker { display: none; }
+.details-sum { display: flex; align-items: center; justify-content: space-between; min-height: 3.5rem; font-weight: 700; font-size: var(--t2); color: var(--smoke); }
+.details summary:hover .details-sum { color: var(--white); }
+.details[open] .details-sum .glyph { rotate: 180deg; }
+.details-body { display: grid; gap: 10px; padding-bottom: 32px; color: var(--ash); }
+.details pre { margin: 0; font: 400 var(--t-small)/1.65 var(--font); font-variant-numeric: tabular-nums; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------- Narrower screens: bands stack, the well goes full width ---------- */
+@media (max-width: 1100px) {
+  .band-tools { justify-content: flex-start; margin-top: 10px; }
+  .band[data-state="done"] .band-grid { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title note action" "tools tools tools" "alert alert alert"; }
+  .band[data-state="done"] .band-tools { margin-top: 4px; }
+  .editor { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .band-grid, .band[data-state="done"] .band-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "note" "tools" "action" "alert"; }
+  .band[data-state="done"] .band-action { width: auto; justify-self: start; }
+  .band-tools { gap: 14px 20px; margin-top: 6px; }
+  .stage { padding-block: 16px; }
+  .stage-grid { grid-template-columns: minmax(0, 1fr); }
+  .clock { grid-auto-flow: column; align-items: end; justify-content: space-between; }
+  .timer { font-size: 4.3rem; grid-column: 2; }
+  .frame-empty { place-content: start center; padding: 14px 16px; font-size: var(--t0); }
+  .frame-empty br { display: none; }
+  .cam-group { display: grid; grid-template-columns: auto auto; justify-content: start; }
+  .cam-group .sizes { grid-column: 2; }
+}
