@@ -2,7 +2,7 @@
 
 Notable changes to Vignette. Versions follow [Semantic Versioning](https://semver.org/); each release is a Git tag and a GitHub Release.
 
-## 0.1.0 (unreleased, proposed)
+## 0.1.0 (2026-10-21)
 
 The first public version: an open-source screen recorder that runs entirely in the browser and self-hosts on a free Cloudflare account.
 
