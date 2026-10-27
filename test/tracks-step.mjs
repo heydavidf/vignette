@@ -9,16 +9,17 @@ export const TRACKS_STEP = '3e. Two tracks: webcam on records two files and off 
 export const ORIGINALS_STEP = '3f. Upload with the camera keeps the originals: Retry after a failure, owner only, never public, gone after Delete';
 const MB = '/vendor/mediabunny-1.61.6.min.mjs';
 
-// Runs in the page: where the export differs from the screen recording at each time. The fake screen is
-// mid green and the fake camera dark green with a bright shape, so the bubble (camera picture and black
-// ring) stands out. For a disc at `at` and one at `away` ({x, y} shares, radius r as a share of the shorter
-// edge): the share of each disc's pixels that differ, and the centre of the differing pixels near `at`.
+// Runs in the page: where the export shows the bubble's near-black ring at each time, found as pixels that
+// are dark in the export but not in the screen recording. Chromium's fake screen and camera are mid or light
+// green everywhere (how green depends on the platform, so the camera picture itself is not relied on), and
+// the ring is #0B0B0B. For a disc at `at` and one at `away` ({x, y} shares, radius r as a share of the shorter
+// edge): the share of each disc's pixels that are ring, and the centre of the ring pixels near `at`.
 async function bubbleSpots({ mb, times, at, away, r }) {
   const M = await import(mb);
   const { video, exported } = window.__vignette.editor;
   const open = async (blob) => {
     const input = new M.Input({ formats: M.ALL_FORMATS, source: new M.BlobSource(blob) });
-    return { input, sink: new M.CanvasSink(await input.getPrimaryVideoTrack(), { width: 320 }) };
+    return { input, sink: new M.CanvasSink(await input.getPrimaryVideoTrack(), { width: 640 }) }; // a large ring is about 4 px thick here
   };
   const luma = async ({ sink }, t) => {
     const { canvas } = await sink.getCanvas(t);
@@ -36,7 +37,7 @@ async function bubbleSpots({ mb, times, at, away, r }) {
       const hit = { at: [0, 0], away: [0, 0] };
       let n = 0, sx = 0, sy = 0;
       for (let i = 0; i < a.y.length; i++) {
-        const differs = Math.abs(a.y[i] - b.y[i]) > 30;
+        const differs = a.y[i] < 50 && b.y[i] > 70; // ring in the export, green in the screen recording
         for (const k of ['at', 'away']) if (dist(i, k === 'at' ? at : away) < R) { hit[k][0]++; if (differs) hit[k][1]++; }
         if (differs && dist(i, at) < 1.5 * R) { n++; sx += i % a.w; sy += Math.floor(i / a.w); }
       }
@@ -55,7 +56,7 @@ async function joinMatch({ mb, at, keep, cut, bubble }) {
   const { video, exported } = window.__vignette.editor;
   const open = async (blob) => {
     const input = new M.Input({ formats: M.ALL_FORMATS, source: new M.BlobSource(blob) });
-    return { input, sink: new M.CanvasSink(await input.getPrimaryVideoTrack(), { width: 320 }) };
+    return { input, sink: new M.CanvasSink(await input.getPrimaryVideoTrack(), { width: 640 }) }; // a large ring is about 4 px thick here
   };
   const toLuma = ({ canvas }) => {
     const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data, y = new Float32Array(d.length / 4);
@@ -146,8 +147,9 @@ export async function tracksStep(page, { record, assert, ok }) {
   const startAt = { x: 0.165 * 9 / 16, y: 1 - 0.165 }; // where it sat while recording: medium, bottom left of the 16:9 frame
   const spots = await page.evaluate(bubbleSpots, { mb: MB, times: [0.5, 2.5], at: placed, away: startAt, r: radius });
   for (const s of spots) {
-    assert(s.at > 0.6 && s.away < 0.2 && Math.abs(s.x - placed.x) < 0.03 && Math.abs(s.y - placed.y) < 0.04,
-      `at ${s.t} s the export differs from the screen over ${(s.at * 100).toFixed(0)}% of the disc where the bubble was placed `
+    // The ring is 3% of the diameter, so it covers about 12% of its disc; anti-aliasing and encoding widen or narrow it.
+    assert(s.at > 0.04 && s.at < 0.5 && s.away < 0.01 && Math.abs(s.x - placed.x) < 0.03 && Math.abs(s.y - placed.y) < 0.04,
+      `at ${s.t} s the export shows the ring over ${(s.at * 100).toFixed(0)}% of the disc where the bubble was placed `
       + `(${placed.x.toFixed(3)}, ${placed.y.toFixed(3)}), centred at (${s.x.toFixed(3)}, ${s.y.toFixed(3)}), and over ${(s.away * 100).toFixed(0)}% of where it sat while recording`);
   }
   const how = await page.evaluate(() => window.__vignette.details.export);
