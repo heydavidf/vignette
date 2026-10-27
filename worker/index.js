@@ -1,19 +1,25 @@
 // Vignette Worker: owner API, public share page, and media streaming from R2.
 // Static files in ./public are served by Workers Static Assets before this
-// code runs, so everything here is the dynamic part.
-
-// The pictogram sprite, inlined into share pages so they need no extra
-// request (wrangler.toml imports .svg files as text).
-import ICONS from '../public/icons.svg';
+// code runs, so everything here is the dynamic part. The share page's HTML
+// lives in share-page.js.
+import { sharePageResponse, notFoundResponse } from './share-page.js';
 
 const PART_SIZE = 20 * 1024 * 1024; // 20 MiB: single-shot limit and multipart chunk size
 const MAX_THUMB_BYTES = 2 * 1024 * 1024;
 const ID_RE = /^[a-z0-9]{16}$/;
-// Shown in the share page footer. Change it to your fork's URL.
-const REPO_URL = 'https://github.com/heydavidf/vignette';
+
+// Each recording is up to three files. "video" is the rendered MP4 that the
+// share page plays. "screen" and "camera" are the originals as recorded,
+// kept for the owner (for re-rendering later) and never served publicly.
+const TRACKS = ['video', 'screen', 'camera'];
+const RAW = ['screen', 'camera'];
+const RAW_COL = { screen: 'raw_screen', camera: 'raw_camera' }; // column names come only from here
+const SIZES = ['small', 'medium', 'large'];
 
 const videoKey = (id) => `videos/${id}.mp4`;
 const thumbKey = (id) => `thumbs/${id}.jpg`;
+const rawKey = (id, track) => `raw/${id}-${track}.mp4`;
+const fileKey = (id, track) => (track === 'video' ? videoKey(id) : rawKey(id, track));
 
 export default {
   async fetch(request, env) {
@@ -22,9 +28,12 @@ export default {
     } catch (err) {
       if (err instanceof HttpError) return json({ error: err.message }, err.status, err.headers);
       console.error(err);
-      // The most common setup mistake gets a message that says what to do.
+      // The most common setup mistakes get a message that says what to do.
       if (/no such table/i.test(err.message)) {
         return json({ error: 'The database is not set up yet. Run: npm run db:init' }, 500);
+      }
+      if (/no such column|has no column named/i.test(err.message)) {
+        return json({ error: 'The database is from an older Vignette and needs its update. Run: npm run db:migrate' }, 500);
       }
       return json({ error: 'Internal error' }, 500);
     }
@@ -60,10 +69,11 @@ async function route(request, env) {
       if (!ID_RE.test(id)) throw new HttpError(404, 'Video not found');
       const action = parts[3];
       if (parts.length === 3 && method === 'DELETE') return deleteVideo(env, id);
-      if (parts.length === 4 && action === 'blob' && method === 'PUT') return putBlob(request, env, id);
-      if (parts.length === 5 && action === 'parts' && method === 'PUT') return putPart(request, env, id, parts[4]);
-      if (parts.length === 4 && action === 'complete' && method === 'POST') return completeVideo(request, env, id);
+      if (parts.length === 4 && action === 'blob' && method === 'PUT') return putBlob(request, env, id, trackOf(url));
+      if (parts.length === 5 && action === 'parts' && method === 'PUT') return putPart(request, env, id, parts[4], trackOf(url));
+      if (parts.length === 4 && action === 'complete' && method === 'POST') return completeFile(request, env, id, trackOf(url));
       if (parts.length === 4 && action === 'thumb' && method === 'PUT') return putThumb(request, env, id);
+      if (parts.length === 5 && action === 'raw' && (method === 'GET' || method === 'HEAD')) return getRaw(request, env, id, parts[4]);
     }
     throw new HttpError(405, 'Method not allowed');
   }
@@ -77,6 +87,13 @@ async function route(request, env) {
 
   // Everything else is a static file (or the assets 404).
   return env.ASSETS.fetch(request);
+}
+
+// ?track=video (the default), screen or camera: which file an upload request is for.
+function trackOf(url) {
+  const track = url.searchParams.get('track') ?? 'video';
+  if (!TRACKS.includes(track)) throw new HttpError(400, 'track must be video, screen or camera');
+  return track;
 }
 
 // ---------- Auth ----------
@@ -138,36 +155,36 @@ function bodyStream(request, limit) {
   return { body: request.body, length };
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+// An original's upload record ({size, uploadId, ready}) from its column, or null.
+function rawState(row, track) {
+  try { return JSON.parse(row[RAW_COL[track]] || 'null'); } catch { return null; } // unreadable: treated as not declared
 }
 
-function fmtDuration(seconds) {
-  const s = Math.max(0, Math.round(seconds));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+// Where one file of a row stands: {size, uploadId, ready}. The video's state
+// is the row's own columns; an original's is its small JSON record, present
+// only when the original was declared as the row was made.
+function fileState(row, track) {
+  if (track === 'video') return { size: row.size, uploadId: row.upload_id, ready: row.status === 'ready' };
+  const state = rawState(row, track);
+  if (!state) throw new HttpError(409, `No ${track} original was declared for this video`);
+  return state;
 }
 
-function fmtSize(bytes) {
-  return bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(2)} GB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+// Validates the bubble's place as sent by the client: {x, y} shares of the
+// frame from 0 to 1 and one of the three sizes. Stored as JSON, or null.
+function bubbleJson(value) {
+  if (value === undefined || value === null) return null;
+  const { x, y, size } = value;
+  const share = (v) => Number.isFinite(v) && v >= 0 && v <= 1;
+  if (!share(x) || !share(y) || !SIZES.includes(size)) throw new HttpError(400, 'bubble must be {x, y, size} with x and y from 0 to 1');
+  return JSON.stringify({ x, y, size });
 }
-
-// The parts every Vignette page shares: fonts, styles, the header strip.
-const HEAD = `<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0B0B0B">
-<meta name="robots" content="noindex">
-<link rel="preload" href="/vendor/fonts/fira-sans-700.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/tokens.css">
-<link rel="stylesheet" href="/share.css">`;
-const TOP = `<header class="top"><div class="wrap top-row"><span class="brand">Vignette</span></div></header>`;
-const FOOT = `<footer class="foot"><div class="wrap">Recorded with <a href="${REPO_URL}">Vignette</a></div></footer>`;
-const glyph = (name) => `<svg class="glyph" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 // ---------- Owner API ----------
 
 async function listVideos(env) {
   const { results } = await env.DB.prepare(
-    'SELECT id, title, duration, size, created_at, status FROM videos ORDER BY created_at DESC',
+    'SELECT id, title, duration, size, created_at, status, has_raw FROM videos ORDER BY created_at DESC',
   ).all();
   return json({ videos: results });
 }
@@ -181,62 +198,92 @@ async function createVideo(request, env) {
   const width = Number.isInteger(body.width) ? body.width : null;
   const height = Number.isInteger(body.height) ? body.height : null;
   if (!Number.isFinite(duration) || duration < 0) throw new HttpError(400, 'duration must be a number of seconds');
-  if (!Number.isInteger(size) || size <= 0) throw new HttpError(400, 'size must be a positive number of bytes');
   const maxBytes = Number(env.MAX_UPLOAD_MB || 2000) * 1024 * 1024;
-  if (size > maxBytes) throw new HttpError(413, `Video is larger than the ${env.MAX_UPLOAD_MB} MB limit`);
+  const checkSize = (n, what) => {
+    if (!Number.isInteger(n) || n <= 0) throw new HttpError(400, `${what} must be a positive number of bytes`);
+    if (n > maxBytes) throw new HttpError(413, `${what === 'size' ? 'Video' : `The ${what} original`} is larger than the ${env.MAX_UPLOAD_MB} MB limit`);
+  };
+  checkSize(size, 'size');
+  const offset = body.cameraOffset ?? null;
+  if (offset !== null && (!Number.isFinite(offset) || Math.abs(offset) > 60)) throw new HttpError(400, 'cameraOffset must be a number of seconds');
+  if ((body.layout ?? 'bubble') !== 'bubble') throw new HttpError(400, 'layout must be bubble');
+  const bubble = bubbleJson(body.bubble);
+  // The originals: both or neither, each with its size. Their bytes come after the video's.
+  const raw = body.raw ?? null;
+  if (raw !== null) for (const t of RAW) checkSize(raw?.[t], t);
 
   const id = newId();
-  const multipart = size > PART_SIZE;
-  let uploadId = null;
-  if (multipart) {
-    const upload = await env.MEDIA.createMultipartUpload(videoKey(id), { httpMetadata: { contentType: 'video/mp4' } });
-    uploadId = upload.uploadId;
+  const multipart = (bytes) => bytes > PART_SIZE;
+  // Multipart uploads opened here stay open in R2 (and keep their parts) until
+  // completed or aborted, so if the row cannot be written they are aborted.
+  const opened = [];
+  const begin = async (key, bytes) => {
+    if (!multipart(bytes)) return null;
+    const upload = await env.MEDIA.createMultipartUpload(key, { httpMetadata: { contentType: 'video/mp4' } });
+    opened.push(upload);
+    return upload.uploadId;
+  };
+  try {
+    const uploadId = await begin(videoKey(id), size);
+    const declared = { screen: null, camera: null };
+    if (raw) for (const t of RAW) declared[t] = JSON.stringify({ size: raw[t], uploadId: await begin(rawKey(id, t), raw[t]), ready: false });
+    await env.DB.prepare(
+      `INSERT INTO videos (id, title, duration, size, mime, width, height, status, upload_id, created_at,
+         camera_offset, has_raw, layout, bubble, raw_screen, raw_camera)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?, ?, 0, 'bubble', ?, ?, ?)`,
+    ).bind(id, title, duration, size, mime, width, height, uploadId, Date.now(), offset, bubble, declared.screen, declared.camera).run();
+  } catch (err) {
+    await Promise.all(opened.map((u) => u.abort().catch(() => {})));
+    throw err;
   }
-  await env.DB.prepare(
-    `INSERT INTO videos (id, title, duration, size, mime, width, height, status, upload_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'uploading', ?, ?)`,
-  ).bind(id, title, duration, size, mime, width, height, uploadId, Date.now()).run();
-  return json({ id, multipart, partSize: PART_SIZE }, 201);
+  return json({
+    id, multipart: multipart(size), partSize: PART_SIZE,
+    raw: raw ? { screen: { multipart: multipart(raw.screen) }, camera: { multipart: multipart(raw.camera) } } : null,
+  }, 201);
 }
 
-async function putBlob(request, env, id) {
-  const row = await getRow(env, id);
-  if (row.status !== 'uploading' || row.upload_id) throw new HttpError(409, 'This video does not take a single-shot upload');
+async function putBlob(request, env, id, track) {
+  const state = fileState(await getRow(env, id), track);
+  if (state.ready || state.uploadId) throw new HttpError(409, 'This file does not take a single-shot upload');
   const { body, length } = bodyStream(request, PART_SIZE);
-  await env.MEDIA.put(videoKey(id), body, { httpMetadata: { contentType: 'video/mp4' } });
+  await env.MEDIA.put(fileKey(id, track), body, { httpMetadata: { contentType: 'video/mp4' } });
   return json({ ok: true, size: length });
 }
 
-async function putPart(request, env, id, n) {
+async function putPart(request, env, id, n, track) {
   const partNumber = Number(n);
   if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10000) throw new HttpError(400, 'Part number must be 1 to 10000');
-  const row = await getRow(env, id);
-  if (row.status !== 'uploading' || !row.upload_id) throw new HttpError(409, 'This video is not a multipart upload in progress');
-  if (partNumber > Math.ceil(row.size / PART_SIZE)) throw new HttpError(400, 'More parts than the declared size needs');
+  const state = fileState(await getRow(env, id), track);
+  if (state.ready || !state.uploadId) throw new HttpError(409, 'This file is not a multipart upload in progress');
+  if (partNumber > Math.ceil(state.size / PART_SIZE)) throw new HttpError(400, 'More parts than the declared size needs');
   const { body } = bodyStream(request, PART_SIZE);
-  const upload = env.MEDIA.resumeMultipartUpload(videoKey(id), row.upload_id);
+  const upload = env.MEDIA.resumeMultipartUpload(fileKey(id, track), state.uploadId);
   const part = await upload.uploadPart(partNumber, body);
   return json({ partNumber: part.partNumber, etag: part.etag });
 }
 
-async function completeVideo(request, env, id) {
-  const row = await getRow(env, id);
-  if (row.status === 'ready') return json({ id, status: 'ready', size: row.size }); // retry after a lost response
+// Finishes one file. The video's completion marks the row ready, so the
+// share link works; an original's marks it kept, and once both originals
+// are kept the row's has_raw becomes 1.
+async function completeFile(request, env, id, track) {
+  const state = fileState(await getRow(env, id), track);
+  if (state.ready) return json({ id, track, status: 'ready', size: state.size }); // retry after a lost response
   const body = await readJson(request);
+  const key = fileKey(id, track);
   let size;
-  if (row.upload_id) {
+  if (state.uploadId) {
     const parts = Array.isArray(body.parts) ? body.parts : [];
     if (!parts.length || !parts.every((p) => Number.isInteger(p.partNumber) && typeof p.etag === 'string')) {
       throw new HttpError(400, 'parts must be a list of {partNumber, etag}');
     }
     // R2 would happily stitch together a list with a gap, giving a corrupt
-    // video marked ready. Require exactly parts 1..N for the declared size.
+    // file marked ready. Require exactly parts 1..N for the declared size.
     parts.sort((a, b) => a.partNumber - b.partNumber);
-    const expected = Math.ceil(row.size / PART_SIZE);
+    const expected = Math.ceil(state.size / PART_SIZE);
     if (parts.length !== expected || parts.some((p, i) => p.partNumber !== i + 1)) {
       throw new HttpError(409, `Expected parts 1 to ${expected}, got ${parts.map((p) => p.partNumber).join(', ')}`);
     }
-    const upload = env.MEDIA.resumeMultipartUpload(videoKey(id), row.upload_id);
+    const upload = env.MEDIA.resumeMultipartUpload(key, state.uploadId);
     try {
       const object = await upload.complete(parts.map(({ partNumber, etag }) => ({ partNumber, etag })));
       size = object.size;
@@ -245,13 +292,21 @@ async function completeVideo(request, env, id) {
       throw new HttpError(409, `R2 could not finish the upload: ${err.message}`);
     }
   } else {
-    const object = await env.MEDIA.head(videoKey(id));
-    if (!object) throw new HttpError(409, 'Nothing has been uploaded for this video yet');
+    const object = await env.MEDIA.head(key);
+    if (!object) throw new HttpError(409, 'Nothing has been uploaded for this file yet');
     size = object.size;
   }
   // Store the size R2 actually holds, so the row always matches the file.
-  await env.DB.prepare("UPDATE videos SET status = 'ready', upload_id = NULL, size = ? WHERE id = ?").bind(size, id).run();
-  return json({ id, status: 'ready', size });
+  if (track === 'video') {
+    await env.DB.prepare("UPDATE videos SET status = 'ready', upload_id = NULL, size = ? WHERE id = ?").bind(size, id).run();
+  } else {
+    // One statement, so two completes racing still leave has_raw right.
+    const other = RAW_COL[track === 'screen' ? 'camera' : 'screen'];
+    await env.DB.prepare(
+      `UPDATE videos SET ${RAW_COL[track]} = ?, has_raw = CASE WHEN json_extract(${other}, '$.ready') THEN 1 ELSE 0 END WHERE id = ?`,
+    ).bind(JSON.stringify({ size, uploadId: null, ready: true }), id).run();
+  }
+  return json({ id, track, status: 'ready', size });
 }
 
 async function putThumb(request, env, id) {
@@ -261,13 +316,24 @@ async function putThumb(request, env, id) {
   return json({ ok: true });
 }
 
+// An original as recorded, for the owner only (a later version re-renders
+// from it). Range requests work, so a player or Mediabunny can read parts.
+async function getRaw(request, env, id, track) {
+  if (!RAW.includes(track)) throw new HttpError(404, 'No such original');
+  const row = await getRow(env, id);
+  if (!row.has_raw) throw new HttpError(404, 'No originals are kept for this video');
+  return streamObject(request, env, rawKey(id, track), 'private, no-store', 'Original not found');
+}
+
 async function deleteVideo(env, id) {
   const row = await getRow(env, id);
-  if (row.upload_id) {
-    // An unfinished multipart upload keeps its parts in R2 until aborted.
-    try { await env.MEDIA.resumeMultipartUpload(videoKey(id), row.upload_id).abort(); } catch { /* already gone */ }
+  // An unfinished multipart upload keeps its parts in R2 until aborted.
+  const open = [[videoKey(id), row.upload_id], ...RAW.map((t) => [rawKey(id, t), rawState(row, t)?.uploadId])];
+  for (const [key, uploadId] of open) {
+    if (!uploadId) continue;
+    try { await env.MEDIA.resumeMultipartUpload(key, uploadId).abort(); } catch { /* already gone */ }
   }
-  await env.MEDIA.delete([videoKey(id), thumbKey(id)]);
+  await env.MEDIA.delete([videoKey(id), thumbKey(id), ...RAW.map((t) => rawKey(id, t))]);
   await env.DB.prepare('DELETE FROM videos WHERE id = ?').bind(id).run();
   return json({ ok: true });
 }
@@ -289,22 +355,27 @@ function parseRange(header) {
 
 async function streamMedia(request, env, id) {
   if (!ID_RE.test(id)) throw new HttpError(404, 'Video not found');
-  // Only finished videos are served: not half-uploaded ones, not deleted ones.
+  // Only finished videos are served: not half-uploaded ones, not deleted
+  // ones, and only the rendered file (the originals never come from here).
   const row = await env.DB.prepare('SELECT status FROM videos WHERE id = ?').bind(id).first();
   if (row?.status !== 'ready') throw new HttpError(404, 'Video not found');
-  const key = videoKey(id);
+  // Private and short, so a deleted video stops playing within the hour
+  // and shared caches never keep a copy.
+  return streamObject(request, env, videoKey(id), 'private, max-age=3600', 'Video not found');
+}
+
+// Streams one R2 object as video/mp4, honouring a single Range.
+async function streamObject(request, env, key, cacheControl, missing) {
   const headers = new Headers({
     'content-type': 'video/mp4',
     'accept-ranges': 'bytes',
-    // Private and short, so a deleted video stops playing within the hour
-    // and shared caches never keep a copy.
-    'cache-control': 'private, max-age=3600',
+    'cache-control': cacheControl,
     'x-content-type-options': 'nosniff',
   });
 
   if (request.method === 'HEAD') {
     const head = await env.MEDIA.head(key);
-    if (!head) throw new HttpError(404, 'Video not found');
+    if (!head) throw new HttpError(404, missing);
     headers.set('content-length', String(head.size));
     headers.set('etag', head.httpEtag);
     return new Response(null, { headers });
@@ -317,10 +388,10 @@ async function streamMedia(request, env, id) {
   } catch {
     // R2 rejects ranges that start past the end of the file.
     const head = await env.MEDIA.head(key);
-    if (!head) throw new HttpError(404, 'Video not found');
+    if (!head) throw new HttpError(404, missing);
     throw new HttpError(416, 'Range not satisfiable', { 'content-range': `bytes */${head.size}` });
   }
-  if (!object) throw new HttpError(404, 'Video not found');
+  if (!object) throw new HttpError(404, missing);
   headers.set('etag', object.httpEtag);
 
   if (!range) {
@@ -357,95 +428,6 @@ async function sharePage(env, url, id) {
   const row = ID_RE.test(id)
     ? await env.DB.prepare('SELECT * FROM videos WHERE id = ?').bind(id).first()
     : null;
-  if (!row || row.status !== 'ready') return htmlPage(notFoundHtml(), 404);
-
-  const origin = escapeHtml(url.origin);
-  const title = escapeHtml(row.title);
-  const date = new Date(row.created_at);
-  const isoDate = date.toISOString().slice(0, 10);
-  const duration = fmtDuration(row.duration);
-  const description = escapeHtml(`${duration} video, recorded ${isoDate}`);
-  const fileName = escapeHtml((row.title.replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().slice(0, 80) || 'vignette') + '.mp4');
-  const nonce = newId();
-  const size = row.width && row.height
-    ? `<meta property="og:video:width" content="${row.width}">\n<meta property="og:video:height" content="${row.height}">`
-    : '';
-  // Width and height give the player its shape before the video loads.
-  const dims = row.width && row.height ? ` width="${row.width}" height="${row.height}"` : '';
-
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-${HEAD}
-<title>${title}</title>
-<meta property="og:title" content="${title}">
-<meta property="og:type" content="video.other">
-<meta property="og:url" content="${origin}/v/${id}">
-<meta property="og:image" content="${origin}/thumb/${id}">
-<meta property="og:video" content="${origin}/media/${id}">
-<meta property="og:video:type" content="video/mp4">
-${size}
-<meta property="og:description" content="${description}">
-<meta name="twitter:card" content="summary_large_image">
-</head>
-<body>
-${ICONS}
-${TOP}
-<main>
-<section class="band on-band"><div class="wrap title-band">
-<h1>${title}</h1>
-<p class="runtime"><span class="vh">Runtime </span>${duration}</p>
-</div></section>
-<section class="well on-grey"><div class="wrap">
-<div class="screen"><video controls playsinline preload="metadata"${dims} poster="/thumb/${id}" src="/media/${id}"></video></div>
-<div class="share-row">
-<div class="share-acts">
-<button type="button" id="copy" class="act"><span class="sq">${glyph('copy')}</span><span class="act-label">Copy link</span></button>
-<a class="act" href="/media/${id}" download="${fileName}"><span class="sq">${glyph('download')}</span><span class="act-label">Download</span></a>
-</div>
-<p class="facts"><time datetime="${date.toISOString()}">${isoDate}</time><span>${fmtSize(row.size)}</span></p>
-</div>
-<p id="copied" role="status"></p>
-</div></section>
-</main>
-${FOOT}
-<script nonce="${nonce}">
-const t = document.querySelector('time');
-t.textContent = new Date(t.dateTime).toLocaleDateString(undefined, { dateStyle: 'medium' });
-const v = document.querySelector('video');
-if (v.width && v.height) v.style.setProperty('--ar', v.width / v.height);
-const label = document.querySelector('#copy .act-label');
-document.getElementById('copy').addEventListener('click', async () => {
-  const out = document.getElementById('copied');
-  try { await navigator.clipboard.writeText(location.href); label.textContent = 'Copied'; out.textContent = 'Link copied. Paste it anywhere.'; }
-  catch { out.textContent = 'Copy failed. Copy the address bar instead.'; }
-  setTimeout(() => { label.textContent = 'Copy link'; }, 2000);
-});
-</script>
-</body>
-</html>`;
-  return htmlPage(html, 200, nonce);
-}
-
-function notFoundHtml() {
-  return `<!doctype html>
-<html lang="en">
-<head>${HEAD}<title>Video not found</title></head>
-<body>${ICONS}${TOP}
-<main class="wrap nf"><div class="msg" data-tone="error">${glyph('warning')}<div>
-<h1>Video not found</h1>
-<p>This link may be wrong, or the video was deleted. Ask the person who sent it for a new link.</p>
-</div></div></main>
-${FOOT}</body></html>`;
-}
-
-function htmlPage(html, status, nonce) {
-  // The share page makes no external requests; the policy enforces that.
-  // Styles and fonts come from this Worker's own static files.
-  const base = "default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
-  const csp = nonce ? `${base}; media-src 'self'; script-src 'nonce-${nonce}'` : base;
-  return new Response(html, {
-    status,
-    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': csp },
-  });
+  if (!row || row.status !== 'ready') return notFoundResponse();
+  return sharePageResponse(row, url.origin, newId());
 }

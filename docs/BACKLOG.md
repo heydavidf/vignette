@@ -4,6 +4,7 @@ Everything deliberately left out of v0.1. The rule from `MVP_SPEC.md` holds: if 
 
 ## Done
 - **Mid-section cuts.** Cut from here / Cut to here on the edit step, cuts drawn struck on the trim bar, a cut list with Remove, and a preview that skips cuts. Export re-encodes only when a cut is inside the clip (Mediabunny sample sinks into H.264 and AAC sample sources, `public/cuts.js`); a trim alone stays the copy path. Spec: `CUTS_SPEC.md`.
+- **Two tracks (0.2, loop 1).** The screen and the camera are recorded as separate files, the bubble is placed in the edit step and rendered in at export (`public/render.js`), and the originals are kept in R2 for the owner. Spec: `LOOP1_TWO_TRACKS_SPEC.md`. Layouts and mobile export build on it.
 
 ## Editing
 - **Cut follow-ups.** Sample-exact audio at each join (whole audio frames are kept, so a join can carry up to about 20 ms of extra sound), moving a chosen thumbnail when cuts shift it, undo beyond Remove, and showing cuts on the share page.
@@ -12,7 +13,7 @@ Everything deliberately left out of v0.1. The rule from `MVP_SPEC.md` holds: if 
 - **Blur or redact a region** before upload.
 
 ## Recording
-- **Off-main-thread compositor.** The bubble is drawn on the page's canvas from a Worker timer, which keeps 30 fps in a background tab. Moving the drawing itself into a Worker (OffscreenCanvas plus `MediaStreamTrackProcessor`) would also survive a frozen page.
+- **Off-main-thread preview.** Since two tracks the live canvas is a preview only (the recording no longer depends on it). It is drawn from a Worker timer, which keeps 30 fps in a background tab; moving the drawing itself into a Worker (OffscreenCanvas plus `MediaStreamTrackProcessor`) would also survive a frozen page.
 - **Pause and resume** during a recording.
 - **Higher than 1080p30** capture.
 - **Drawing or pointer highlight** on screen while recording.
@@ -34,6 +35,7 @@ Everything deliberately left out of v0.1. The rule from `MVP_SPEC.md` holds: if 
 - **Rename a video** or replace its thumbnail after upload.
 - **Search, sort and folders.**
 - **Clean-up job** for uploads abandoned half way (they currently stay as "Uploading" rows until deleted by hand).
+- **Single-shot upload racing a delete.** A single-shot `PUT .../blob` (video or original) that is still streaming when the row is deleted can write its file after the delete, leaving an orphan object in R2. Rare (it needs a delete during your own upload); a clean-up job or a check after the write would close it.
 
 ## Setup
 - **Deploy-to-Cloudflare button** for a one-click install.

@@ -2,6 +2,27 @@
 
 Notable changes to Vignette. Versions follow [Semantic Versioning](https://semver.org/); each release is a Git tag and a GitHub Release.
 
+## Unreleased
+
+### Two tracks
+
+- With the webcam on, the screen and the camera are now recorded as two separate files. The bubble is no longer burned in while recording: it is drawn in when you export or upload, wherever you leave it in the edit step.
+- The edit step shows the bubble over the player, playing the camera in step with the screen. Drag it, select it and nudge it with the arrow keys, or pick its size there; **Full screen** shows the picture with the bubble (the player's own full screen and picture in picture are off then, since they would show the screen alone). Dragging it while recording still works and sets where it starts. While the video renders or uploads, and once the link is made, the bubble, the trim and the cuts hold still, because the link keeps them.
+- Export and upload with the camera on render the video (decode both files, draw each frame, encode again as H.264 through the browser's encoder), so they take a little longer; the progress text says "Rendering the video..." and the bar shows its percent. Without the camera nothing changes: a trim still copies.
+- The thumbnail shows the bubble where the video does.
+- After the link works, the originals (the screen and the camera as recorded) are uploaded too and kept with the video, for re-rendering in a later version. They contain everything that was trimmed or cut out. If that fails the link still works, the page says "Originals not kept" and what is missing, and Retry sends only that. The library marks such recordings "Originals kept". Delete removes them with the video.
+- The webcam is captured at up to 1280x720 (was 640x480), since its file is kept.
+- If the camera is unplugged or its permission taken back mid-recording, the screen keeps recording and the bubble holds the camera's last frame; the Details panel says when it happened.
+- The Details panel reports both file sizes, how much later the camera started and the render speed, plus the peak JavaScript heap. That heap is not the page's whole memory use: measured from outside on an Apple M1 Max (one run, renderer process only), a 60 second recording took about 757 MB, and about 1.04 GB while preparing and rendering (see README limits).
+
+### Server and setup
+
+- New owner-only route `GET /api/videos/:id/raw/screen|camera` (with Range support) for the originals. They are stored under `raw/` in R2 and never served by `/media` or any public path. Uploads take `?track=screen|camera` on the existing blob, parts and complete routes.
+- **Upgrade step for existing installs:** run `npm run db:migrate` once (`db:migrate:local` for the local database). It adds the new columns and says "already applied" if run again. Until it runs, share links keep working and the owner pages say what to run.
+- `scripts/wrangler.mjs` keeps a `--config` (or `-c`) given on the command line instead of adding `wrangler.local.toml`.
+- Creating a video aborts the multipart uploads it opened in R2 if its database row cannot be written (for example on a 0.1 database before the update), so no parts are left behind.
+- The share page's HTML moved to `worker/share-page.js`; the Mediabunny helpers to `public/media.js`.
+
 ## 0.1.0 (2026-10-21)
 
 The first public version: an open-source screen recorder that runs entirely in the browser and self-hosts on a free Cloudflare account.

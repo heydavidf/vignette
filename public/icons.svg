@@ -2,7 +2,7 @@
   <!-- Vignette pictograms. One 24 unit grid, one 2.75 stroke, square ends,
        mitred corners. Solid shapes (record, stop, play, sizes) are filled.
        Ids carry an "i-" prefix so they never collide with page ids.
-       The share page inlines this file (worker/index.js imports it). -->
+       The share page inlines this file (worker/share-page.js imports it). -->
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 12H19M12.5 5l7 7-7 7"/></g></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M20.5 12H5M11.5 5l-7 7 7 7"/></g></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 20.5V5M5 11.5l7-7 7 7"/></g></symbol>
@@ -21,6 +21,7 @@
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M2.75 4.5h3.5V8h-3.5zM2.75 10.25h3.5v3.5h-3.5zM2.75 16h3.5v3.5h-3.5z" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M10 6.25h11.25M10 12h11.25M10 17.75h11.25"/></g></symbol>
   <symbol id="i-scissors" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><circle cx="6.25" cy="17.75" r="3"/><circle cx="17.75" cy="17.75" r="3"/><path d="M8 15.25 18.25 3M16 15.25 5.75 3"/></g></symbol>
   <symbol id="i-frame" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/><path d="M3 16.25l5.25-5.25 4 4 3-3 5.5 5.5"/></g></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 9V3.5H9M15 3.5h5.5V9M20.5 15v5.5H15M9 20.5H3.5V15"/></g></symbol>
   <symbol id="i-mark-start" viewBox="0 0 24 24"><path d="M3.75 3.75h5v2.5h-2.5v11.5h2.5v2.5h-5z" fill="currentColor"/><path d="M11.5 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
   <symbol id="i-mark-end" viewBox="0 0 24 24"><path d="M20.25 3.75h-5v2.5h2.5v11.5h-2.5v2.5h5z" fill="currentColor"/><path d="M4.25 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
   <!-- Cut from / cut to: the start or end bracket beside a struck rule (a struck rule means removed). -->

@@ -1,11 +1,13 @@
-// Recorder page entry: capture, compose, MediaRecorder (steps 1 and 2).
+// Recorder page entry: capture, the live preview, recording (steps 1 and 2).
 // Recording logic comes from the spike (spike/spike.js), which proved it on
-// Chrome. Step 3 (edit, upload) lives in editor.js; the webcam bubble's
-// position and drawing live in bubble.js.
+// Chrome. The two recorders (screen, camera) live in tracks.js; step 3
+// (edit, upload) in editor.js; the webcam bubble's position and drawing in
+// bubble.js.
 import { requirePassword } from './auth.js';
 import { openEditor, closeEditor, editorState } from './editor.js';
 import { say, busy } from './ui.js';
 import * as bubble from './bubble.js';
+import { startTracks, heap } from './tracks.js';
 
 const MAX_W = 1920, MAX_H = 1080, FPS = 30;
 const $ = (id) => document.getElementById(id);
@@ -20,14 +22,15 @@ const ui = {
 
 // phase: idle -> shared -> countdown -> recording -> stopped
 const state = {
-  phase: 'idle', screen: null, cam: null, mic: null, recorder: null, chunks: [],
-  audioContext: null, drawing: false, timerHandle: null, startedAt: 0, stoppedAt: 0, framesDrawn: 0, usingCanvas: false,
+  phase: 'idle', screen: null, cam: null, mic: null, session: null,
+  drawing: false, timerHandle: null, startedAt: 0, stoppedAt: 0, framesDrawn: 0, withCamera: false,
 };
+let tracks = null; // what the last recording produced, for the test: {screen, camera, cameraOffset, cameraLostAt}
 
-// The bubble canvas is redrawn on ticks from a tiny Worker. Chrome slows
+// The preview canvas is redrawn on ticks from a tiny Worker. Chrome slows
 // page timers to about once a second in background tabs, which is exactly
 // where Vignette sits while you record another tab or window. Worker timers
-// are not slowed that way, so the bubble keeps its 30 fps.
+// are not slowed that way, so the preview keeps its 30 fps.
 const ticker = new Worker(URL.createObjectURL(new Blob([
   'let t; onmessage = (e) => { clearInterval(t); if (e.data > 0) t = setInterval(() => postMessage(0), e.data); };',
 ], { type: 'text/javascript' })));
@@ -70,6 +73,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const shareLabel = () => ui.share.querySelector(state.phase === 'idle' ? '.if-open' : '.if-done').textContent;
 const stopStream = (s) => s?.getTracks().forEach((t) => t.stop());
 const fmtClock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 // ---------- Step 1: share screen, webcam, mic ----------
 async function share() {
@@ -78,8 +82,8 @@ async function share() {
   let screen;
   try {
     screen = await navigator.mediaDevices.getDisplayMedia({
-      // Capped at 1080p: bigger captures make large files and, on the canvas
-      // path, black video. Chrome scales down to fit, keeping the shape.
+      // Capped at 1080p: bigger captures make large files and overload the
+      // preview canvas. Chrome scales down to fit, keeping the shape.
       video: { frameRate: { ideal: FPS }, width: { max: MAX_W }, height: { max: MAX_H } },
       audio: true, // tab or system audio, where the browser offers it
     });
@@ -99,12 +103,12 @@ async function share() {
   state.screen = screen;
   const track = state.screen.getVideoTracks()[0];
   const { width = 1280, height = 720, displaySurface } = track.getSettings();
-  // Cap the composite canvas at 1080p. A full Retina-sized canvas overloads
-  // the page and records black video (found in the spike).
+  // Cap the preview canvas at 1080p. A full Retina-sized canvas overloads
+  // the page (found in the spike).
   const scale = Math.min(1, MAX_W / width, MAX_H / height);
-  ui.canvas.width = Math.round(width * scale) & ~1; // H.264 wants even sizes
+  ui.canvas.width = Math.round(width * scale) & ~1;
   ui.canvas.height = Math.round(height * scale) & ~1;
-  bubble.setFrame(ui.canvas.width, ui.canvas.height);
+  live.setFrame(ui.canvas.width, ui.canvas.height);
   ui.screenVideo.srcObject = state.screen;
   await ui.screenVideo.play().catch(() => {});
   track.addEventListener('ended', onShareEnded);
@@ -128,7 +132,8 @@ function syncDevices() {
     const problems = [];
     if (ui.cam.checked && !state.cam) {
       try {
-        state.cam = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+        // 720p: the camera is kept as its own file now, for later layouts.
+        state.cam = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } } });
         ui.camVideo.srcObject = state.cam;
         await ui.camVideo.play().catch(() => {});
       } catch (err) {
@@ -147,7 +152,7 @@ function syncDevices() {
       stopStream(state.mic); state.mic = null;
     }
     if (problems.length) say(ui.setupMsg, problems.join(' '));
-    bubble.setCam(ui.cam.checked);
+    live.setCam(ui.cam.checked);
     updatePreview();
   });
   return syncing;
@@ -161,7 +166,7 @@ function updatePreview() {
   ui.canvas.hidden = !composite;
   ui.screenVideo.classList.toggle('helper', composite || !state.screen);
   ui.frame.dataset.source = state.screen ? 'live' : 'empty';
-  bubble.setLive(composite ? state.cam : null);
+  live.setLive(composite ? state.cam : null);
   setDrawing(composite);
 }
 
@@ -185,46 +190,20 @@ function releaseAll() {
   ui.recordStep.hidden = true;
   ui.countdown.hidden = true;
   ui.source.textContent = 'Nothing shared yet.';
-  bubble.setFrame(16, 9);
+  live.setFrame(16, 9);
   updatePreview();
 }
 
-// ---------- Step 2: compose and record ----------
+// ---------- Step 2: preview and record ----------
+// The canvas is the live preview only: what the recording will look like
+// with the bubble where it sits now. It is not recorded; the screen and the
+// camera are (tracks.js), and the bubble is drawn at export.
 function drawFrame() {
   if (state.phase === 'recording') state.framesDrawn++;
   const ctx = ui.canvas.getContext('2d');
   const { width: W, height: H } = ui.canvas;
   if (ui.screenVideo.readyState >= 2) ctx.drawImage(ui.screenVideo, 0, 0, W, H);
-  // The bubble goes wherever it sits right now, so moving it while
-  // recording moves it in the video too.
   if (state.cam && ui.camVideo.readyState >= 2) bubble.draw(ctx, ui.camVideo, W, H);
-}
-
-// Never hard-code an H.264 level: let the browser pick.
-function pickMimeType() {
-  const candidates = [
-    'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4',
-    'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm',
-  ];
-  return candidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
-}
-
-// One video track (screen directly, or the canvas when the bubble is on)
-// plus one audio track mixing tab audio and the microphone.
-function buildRecordingStream() {
-  const out = new MediaStream();
-  state.usingCanvas = !!state.cam;
-  const videoSource = state.usingCanvas ? ui.canvas.captureStream(FPS) : state.screen;
-  videoSource.getVideoTracks().forEach((t) => out.addTrack(t));
-  const audioSources = [state.screen, state.mic].filter((s) => s?.getAudioTracks().length);
-  if (audioSources.length) {
-    const ac = new AudioContext();
-    const dest = ac.createMediaStreamDestination();
-    audioSources.forEach((s) => ac.createMediaStreamSource(new MediaStream(s.getAudioTracks())).connect(dest));
-    dest.stream.getAudioTracks().forEach((t) => out.addTrack(t));
-    state.audioContext = ac;
-  }
-  return out;
 }
 
 // One split-flap change: the old number's top half falls away and the new
@@ -251,31 +230,34 @@ async function startRecording() {
   }
   ui.countdown.hidden = true;
 
-  state.chunks = [];
-  const mimeType = pickMimeType();
+  heap.reset();
   try {
-    state.recorder = new MediaRecorder(buildRecordingStream(), { mimeType: mimeType || undefined, videoBitsPerSecond: 5_000_000 });
+    state.session = startTracks({
+      screen: state.screen, cam: state.cam, mic: state.mic,
+      onScreenError: (err) => {
+        say(ui.setupMsg, `Recording error: ${err?.message || 'unknown'}. Keeping what was recorded.`);
+        stopRecording();
+      },
+      onCamera: (text) => note('camera', text),
+    });
   } catch (err) {
     say(ui.recordMsg, `This browser cannot record this source (${err.message}). Turn the webcam off, or share something else, and try again.`);
     setPhase('shared');
     for (const el of [ui.start, ui.share, ui.cam, ui.mic]) el.disabled = false;
     return;
   }
-  state.recorder.ondataavailable = (e) => { if (e.data.size) state.chunks.push(e.data); };
-  state.recorder.onstop = onRecordingStopped;
-  state.recorder.onerror = (e) => {
-    say(ui.setupMsg, `Recording error: ${e.error?.message || 'unknown'}. Keeping what was recorded.`);
-    stopRecording();
-  };
-  state.recorder.start(1000);
+  state.withCamera = state.session.cameraOffset !== null;
   setPhase('recording');
   state.startedAt = performance.now();
   state.framesDrawn = 0;
-  state.timerHandle = setInterval(() => { ui.timer.textContent = fmtClock((performance.now() - state.startedAt) / 1000); }, 250);
+  state.timerHandle = setInterval(() => {
+    ui.timer.textContent = fmtClock((performance.now() - state.startedAt) / 1000);
+    heap.sample();
+  }, 250);
   ui.timer.textContent = fmtClock(0);
   ui.recDot.hidden = false;
   ui.stop.disabled = false;
-  note('codec', state.recorder.mimeType || '(browser default)');
+  note('codec', state.session.mimeType || '(browser default)');
 }
 
 function finishCountdownCancelled() {
@@ -285,40 +267,46 @@ function finishCountdownCancelled() {
 }
 
 function stopRecording() {
-  if (state.recorder?.state === 'recording') state.stoppedAt = performance.now();
-  if (state.recorder?.state === 'recording') state.recorder.stop();
+  if (state.phase !== 'recording' || !state.session) return;
+  if (!state.session.stopping) state.stoppedAt = performance.now();
   clearInterval(state.timerHandle);
   ui.stop.disabled = true;
   ui.recDot.hidden = true;
+  state.session.stop().then(onRecordingStopped);
 }
 
-async function onRecordingStopped() {
+async function onRecordingStopped(result) {
+  if (state.phase !== 'recording') return; // already handled
   const seconds = ((state.stoppedAt || performance.now()) - state.startedAt) / 1000; // Stop to start, not to this event
-  const raw = new Blob(state.chunks, { type: state.recorder.mimeType || 'video/webm' });
-  state.chunks = [];
-  const usedCanvas = state.usingCanvas;
   const framesDrawn = state.framesDrawn;
-  state.audioContext?.close();
-  state.audioContext = null;
+  state.session = null;
+  tracks = result;
+  heap.sample();
   releaseAll(); // ends the screen share; also hides step 2
   for (const el of [ui.share, ui.cam, ui.mic]) el.disabled = false;
 
-  const mb = raw.size / 1024 / 1024;
+  const { screen, camera, cameraOffset } = result;
+  const mb = screen.size / 1024 / 1024;
   note('recorded', `${mb.toFixed(1)} MB in ${seconds.toFixed(1)} s (${(mb / (seconds / 60)).toFixed(1)} MB per minute)`);
-  note('canvas', usedCanvas ? `on, ${(framesDrawn / seconds).toFixed(1)} fps drawn (${FPS} expected)` : 'off, screen recorded directly');
-  if (!raw.size) {
+  note('canvas', state.withCamera ? `preview only, ${(framesDrawn / seconds).toFixed(1)} fps drawn (${FPS} expected)` : 'off, no webcam');
+  note('originals', camera
+    ? `screen ${fmtMB(screen.size)}, camera ${fmtMB(camera.size)}, camera started ${(cameraOffset * 1000).toFixed(1)} ms after the screen`
+    : `screen ${fmtMB(screen.size)}, no camera`);
+  if (state.withCamera && !camera) note('camera', 'produced no picture; the video has no bubble');
+  note('peak memory', `${heap.text()} while recording`);
+  if (!screen.size) {
     say(ui.setupMsg, 'Nothing was recorded. Share your screen and try again.');
     return;
   }
   setPhase('stopped');
   ui.source.textContent = 'Recording finished. Share again to record another.';
   ui.recordSummary.textContent = `${fmtClock(seconds)} recorded.`;
-  await openEditor(raw, note);
+  await openEditor(result, note);
 }
 
 // ---------- Wire up ----------
 ui.share.addEventListener('click', share);
-ui.cam.addEventListener('change', () => { bubble.setCam(ui.cam.checked); if (state.phase === 'shared') syncDevices(); });
+ui.cam.addEventListener('change', () => { live.setCam(ui.cam.checked); if (state.phase === 'shared') syncDevices(); });
 ui.mic.addEventListener('change', () => { if (state.phase === 'shared') syncDevices(); });
 ui.start.addEventListener('click', startRecording);
 ui.stop.addEventListener('click', stopRecording);
@@ -329,13 +317,14 @@ if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaRecorder) {
   ui.share.disabled = true;
 }
 
-bubble.init({ el: $('bubble'), video: $('bubbleVideo'), frame: ui.frame, sizes: document.querySelectorAll('input[name=bubbleSize]') });
-bubble.setCam(ui.cam.checked);
+const live = bubble.attach({ el: $('bubble'), video: $('bubbleVideo'), frame: ui.frame, sizes: document.querySelectorAll('input[name=bubbleSize]') });
+live.setCam(ui.cam.checked);
 setPhase('idle');
 
 // Exposed for the automated test (test/e2e.mjs).
 window.__vignette = {
   state, details, editor: editorState,
+  get tracks() { return tracks; },
   bubble: { get: bubble.get, set: bubble.set, get lastDraw() { return bubble.lastDraw; } },
 };
 

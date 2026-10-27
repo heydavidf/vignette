@@ -40,10 +40,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Syntax check every script
-        run: for f in worker/index.js public/*.js test/*.mjs; do node --check "$f"; done
+        run: for f in worker/*.js public/*.js scripts/*.mjs test/*.mjs; do node --check "$f"; done
 
-      - name: Tripwire self-test
-        run: node --test test/tripwire.test.mjs
+      - name: Script self-tests (tripwire, wrangler config choice)
+        run: node --test test/tripwire.test.mjs test/wrangler-args.test.mjs
 
       - name: End-to-end test (local Cloudflare emulator, fake camera and screen)
         run: npm test

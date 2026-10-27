@@ -12,6 +12,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cutsStep, CUTS_STEP } from './cuts-step.mjs';
 import { cutsScenario, CUTS_SCENARIO } from './cuts-scenario.mjs';
+import { tracksStep, TRACKS_STEP, originalsStep, ORIGINALS_STEP } from './tracks-step.mjs';
+import { migrateStep, MIGRATE_STEP, OLD_SCHEMA } from './migrate-step.mjs';
+import { tracksScenario, TRACKS_SCENARIO } from './tracks-scenario.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wranglerBin = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
@@ -37,9 +40,9 @@ function freePort() {
   });
 }
 
-function runWrangler(args) {
+function runWrangler(args, bin = wranglerBin) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [wranglerBin, ...args], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [bin, ...args], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     child.stdout.on('data', (d) => { out += d; });
     child.stderr.on('data', (d) => { out += d; });
@@ -49,9 +52,16 @@ function runWrangler(args) {
 
 // ---------- Servers ----------
 const servers = [];
-async function startServer(name, password, initDb) {
+// db: 'current' (schema.sql, then the update, which finds nothing to do), 'v0.1' (the old table), or none.
+async function startServer(name, password, db) {
   const dir = await mkdtemp(join(tmpdir(), `vignette-e2e-${name}-`));
-  if (initDb) await runWrangler(['d1', 'execute', 'vignette', '--local', '--persist-to', dir, '--file=schema.sql']);
+  const local = ['--local', '--persist-to', dir, '--config', 'wrangler.toml']; // the same database wrangler dev below uses
+  if (db === 'current') {
+    await runWrangler(['d1', 'execute', 'vignette', ...local, '--file=schema.sql']);
+    const out = await runWrangler(local, join(root, 'scripts', 'migrate.mjs'));
+    if (!/already applied/.test(out)) throw new Error(`the update on a new database did something:\n${out}`);
+  }
+  if (db === 'v0.1') await runWrangler(['d1', 'execute', 'vignette', ...local, '--command', OLD_SCHEMA]);
   const port = await freePort();
   const inspector = await freePort();
   const server = { name, dir, base: `http://127.0.0.1:${port}`, log: '' };
@@ -142,10 +152,10 @@ const create = (base, size) => api(base, '/api/videos', { method: 'POST', body: 
 let browser = null;
 let passed = false;
 try {
-  step('Setup: two wrangler dev servers (one normal, one with no password set)');
-  const [main, unset] = await Promise.all([startServer('main', PASSWORD, true), startServer('unset', '', false)]);
+  step('Setup: three wrangler dev servers (one normal, one with no password set, one on a 0.1 database)');
+  const [main, unset, old] = await Promise.all([startServer('main', PASSWORD, 'current'), startServer('unset', '', null), startServer('old', PASSWORD, 'v0.1')]);
   const base = main.base;
-  ok(`main on ${base}, no-password server on ${unset.base}`);
+  ok(`main on ${base}, no-password server on ${unset.base}, 0.1 database on ${old.base}`);
 
   browser = await chromium.launch({
     headless: process.env.HEADED !== '1',
@@ -299,6 +309,13 @@ try {
   step(CUTS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
   await cutsScenario(page, { record, assert, ok, base, api, viewer: async () => watch(await context.newPage(), 'cuts viewer') });
 
+  step(TRACKS_STEP);
+  await tracksStep(page, { record, assert, ok });
+  step(ORIGINALS_STEP);
+  await originalsStep(page, { record, assert, ok, base, auth, listVideos, viewer: async () => watch(await context.newPage(), 'originals viewer') });
+  step(TRACKS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await tracksScenario(page, { record, assert, ok, base, api, viewer: async () => watch(await context.newPage(), 'tracks viewer') });
+
   step('4. Share page');
   const share = await fetch(`${base}/v/${id}`);
   const html = await share.text();
@@ -446,6 +463,9 @@ try {
   assert(/npm run db:init/.test(noTable.error), `missing table gave ${JSON.stringify(noTable)}`);
   ok(`the page shows "${expected}"; a missing table says to run npm run db:init`);
   await stranger.close();
+
+  step(MIGRATE_STEP);
+  await migrateStep({ root, env, old, auth, assert, ok });
 
   assert(pageErrors.length === 0, `page errors:\n${pageErrors.join('\n')}`);
   passed = true;

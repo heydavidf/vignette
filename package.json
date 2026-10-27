@@ -13,6 +13,8 @@
     "deploy": "node scripts/wrangler.mjs deploy",
     "db:init": "node scripts/wrangler.mjs d1 execute vignette --remote --file=schema.sql",
     "db:init:local": "node scripts/wrangler.mjs d1 execute vignette --local --file=schema.sql",
+    "db:migrate": "node scripts/migrate.mjs --remote",
+    "db:migrate:local": "node scripts/migrate.mjs --local",
     "test": "node test/e2e.mjs"
   },
   "devDependencies": {

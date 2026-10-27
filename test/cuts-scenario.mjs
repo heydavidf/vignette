@@ -122,6 +122,10 @@ export async function cutsScenario(page, { record, assert, ok, base, api, viewer
 
   await page.reload(); // a fresh editor, whatever the step before left
   await page.waitForSelector('#app:not([hidden])');
+  // Webcam off since two tracks (0.2): the frame checks below compare the export with the screen
+  // recording, and with a camera the export also carries the bubble, drawn in at export. The cuts
+  // with a camera (the render path) are covered by step 3c and test/tracks-step.mjs.
+  await page.uncheck('#cam');
   await record(page, 8);
   await page.waitForFunction(() => document.getElementById('preview').readyState >= 1);
   const D = await page.evaluate(() => window.__vignette.editor.video.duration);

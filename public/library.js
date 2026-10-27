@@ -119,7 +119,8 @@ function row(v) {
     el('td', { className: 'reg-thumb' }, plate),
     el('td', { className: 'reg-title' }, title),
     el('td', { className: 'reg-run r' }, fmtDuration(v.duration)),
-    el('td', { className: 'reg-size r' }, fmtSize(v.size)),
+    // "Originals kept": the screen and camera as recorded are stored too (see README).
+    el('td', { className: 'reg-size r' }, el('span', { className: 'reg-sz' }, fmtSize(v.size), v.has_raw ? el('span', { className: 'reg-raw', textContent: 'Originals kept' }) : null)),
     el('td', { className: 'reg-date' }, el('time', { dateTime: created.toISOString(), textContent: fmtDate(v.created_at) })),
     el('td', { className: 'reg-status' }, el('span', { className: `status ${v.status}`, textContent: ready ? 'Ready' : 'Uploading' })),
     el('td', { className: 'reg-actions' }, actions),

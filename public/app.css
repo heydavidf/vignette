@@ -112,7 +112,9 @@
 .bubble[data-live="true"] video { display: block; }
 .bubble[data-live="true"]::before, .bubble[data-live="true"] > .glyph { display: none; }
 .bubble:hover { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
-.bubble:focus-visible { outline-offset: 4px; }
+/* Keyboard focus: the same two-colour ring as hover, so it reads over a dark picture too. */
+/* The transparent outline is what Windows high contrast paints, since it drops box-shadow. */
+.bubble:focus-visible { outline: 2px solid transparent; outline-offset: 4px; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
 .bubble.dragging { cursor: grabbing; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg), 0 10px 24px rgb(0 0 0 / .35); }
 
 /* ---------- Countdown: one split-flap number change ---------- */
@@ -139,6 +141,34 @@
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 24px 40px; align-items: start; }
 .player { padding: 12px; }
 #preview { width: 100%; max-height: 58vh; aspect-ratio: 16 / 9; background: var(--frame); }
+/* With a camera the player is two layers: the screen video, its picture at
+   the top and its controls on a 3.5rem strip below the picture, and over the
+   picture a frame of exactly its shape for the bubble (positioned by
+   bubble.js, as on the stage). The strip keeps the bubble off the controls. */
+.clip, .clip-box { position: relative; }
+.clip[data-bubble="on"] { --bar: 3.5rem; --tall: 58vh; }
+.clip[data-bubble="on"] .clip-box {
+  width: min(100%, (var(--tall) - var(--bar)) * var(--ar, 1.7778)); margin-inline: auto; container-type: inline-size;
+}
+/* Full screen (the Full screen square): the same two layers, as large as the screen allows. */
+.clip:fullscreen { --tall: 100vh; display: grid; place-items: center; background: var(--black); }
+.clip:fullscreen .clip-box { width: min(100vw, (var(--tall) - var(--bar)) * var(--ar, 1.7778)); }
+.clip[data-bubble="on"] #preview {
+  display: block; height: calc(100cqi / var(--ar, 1.7778) + var(--bar)); max-height: none; aspect-ratio: auto;
+  object-fit: contain; object-position: top;
+}
+/* With controlslist="nofullscreen" Chrome still draws its full screen button, greyed; the Full screen square replaces it. */
+.clip[data-bubble="on"] #preview::-webkit-media-controls-fullscreen-button { display: none; }
+.clip-frame { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: var(--ar, 1.7778); pointer-events: none; }
+.clip-frame .bubble { pointer-events: auto; }
+.bubble-tools { display: grid; gap: 12px; margin-top: 16px; }
+.bubble-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.bubble-set { display: flex; align-items: center; gap: 12px 14px; }
+.tools-label { font-weight: 500; font-size: var(--t1); }
+.bubble-note { margin: 0; max-width: 60ch; font-size: var(--t0); line-height: 1.4; color: var(--fg-2); text-wrap: pretty; }
+/* While the video renders or uploads, and once the link is made, the place and the clip cannot change. */
+:is(#bubbleSet, #trim)[inert] { opacity: .45; } /* the bubble stays at full strength so the preview matches the video */
+#editBubble[inert] { cursor: default; }
 
 .trim { display: grid; gap: 10px; margin-top: 20px; }
 .trim-bar {
@@ -206,6 +236,9 @@
 .upload-acts { display: grid; gap: 10px; justify-items: start; }
 #upload { width: 100%; }
 #upload .act-label { flex: 1; }
+.progress-row { display: flex; align-items: center; gap: 12px; }
+.progress-row:has(> progress[hidden]) { display: none; }
+#progressPct { min-width: 4ch; text-align: right; font-weight: 700; font-size: var(--t1); font-variant-numeric: tabular-nums; }
 progress { appearance: none; -webkit-appearance: none; width: 100%; height: 12px; border: 0; background: rgb(11 11 11 / .22); color: var(--black); }
 progress::-webkit-progress-bar { background: rgb(11 11 11 / .22); }
 progress::-webkit-progress-value { background: var(--black); }
@@ -222,6 +255,8 @@ progress::-moz-progress-bar { background: var(--black); }
 .upload:has(#shareBox:not([hidden])) #uploadMsg { color: var(--fg); font-weight: 500; }
 .link-acts { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 #copy { justify-self: start; }
+#retryRaw { justify-self: start; }
+.upload:has(#shareBox:not([hidden])) .raw-msg:not([data-tone="error"]) { font-size: var(--t0); }
 
 /* ---------- Details ---------- */
 .details { border-top: var(--line-w) solid var(--rule-dark); background: var(--black); }
