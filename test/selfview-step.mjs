@@ -85,6 +85,14 @@ export function selfviewSteps({ browser, base, login, pageHooks, watch, assert, 
     await win.waitForSelector('#svStop', { timeout: 10_000 });
     return win;
   }
+  // Stop in the window closes the window inside the click itself, so Playwright's own click can find its page
+  // gone mid-action (seen on CI's Linux runner). The click is dispatched from inside the window instead, after
+  // this call returns, and the window's close is what is awaited.
+  async function stopFrom(win) {
+    const closed = win.waitForEvent('close', { timeout: 10_000 });
+    await win.evaluate(() => { setTimeout(() => document.getElementById('svStop').click(), 0); });
+    await closed;
+  }
   const recording = (page) => page.waitForFunction(() => window.__vignette.state.phase === 'recording', null, { timeout: 10_000 });
   const edited = (page) => page.waitForSelector('#editBody:not([hidden])', { timeout: 60_000 });
   const peak = (page) => page.evaluate(() => Number(/^(\d+) MB JavaScript heap/.exec(window.__vignette.details['peak memory'] || '')?.[1]));
@@ -148,7 +156,7 @@ export function selfviewSteps({ browser, base, login, pageHooks, watch, assert, 
       assert(await page.isHidden('#showWindow') && (await hooks(page)).opens === 2, 'Show window still shows, or the window did not count as reopened');
 
       // Stop in the window ends the recording, and the window closes with it.
-      await Promise.all([again.waitForEvent('close', { timeout: 10_000 }), again.click('#svStop')]);
+      await stopFrom(again);
       await edited(page);
       h = await hooks(page);
       const said = await page.evaluate(() => window.__vignette.details['self-view']);
@@ -265,7 +273,7 @@ export function selfviewSteps({ browser, base, login, pageHooks, watch, assert, 
       const resumed = { ...(await hooks(page)).script, top: await back.evaluate(() => document.getElementById('svText').scrollTop), shown: await back.textContent('#svSpeed') };
       assert(kept > 250 && Math.abs(resumed.top - kept) <= 20 && resumed.speed === 1.5 && resumed.shown === '1.5x' && resumed.paused,
         `reopened, the script is at ${resumed.top} px (was ${kept}), speed ${resumed.speed} (shows ${resumed.shown}), paused ${resumed.paused}`);
-      await Promise.all([back.waitForEvent('close'), back.click('#svStop')]);
+      await stopFrom(back);
       await edited(page);
       // A new recording starts the script from the top, at 1x, scrolling.
       await share(page);
@@ -304,7 +312,7 @@ export function selfviewSteps({ browser, base, login, pageHooks, watch, assert, 
       };
       assert(flap.text && flap.name === 'none', `under reduced motion the window's flap shows "${flap.text}" with the animation "${flap.name}"`);
       assert(quiet.paused && /#i-play$/.test(quiet.glyph) && quiet.label === 'Scroll the script' && quiet.moved === 0, `under reduced motion the script is ${JSON.stringify(quiet)}`);
-      await Promise.all([still.waitForEvent('close'), still.click('#svStop')]);
+      await stopFrom(still);
       await edited(calm.page);
       await calm.context.close();
       ok(`the box spans the tools and the action at 1280 wide and sits above Share screen at 390; the script came back after a reload; at the asked ${asked.width}x${asked.height} `
@@ -367,7 +375,7 @@ export function selfviewSteps({ browser, base, login, pageHooks, watch, assert, 
       const g0 = (await hooks(off.page)).frames;
       await win.waitForTimeout(500);
       assert((await hooks(off.page)).frames > g0 + 5 && (await win.evaluate(sample)).some((v) => v > 20), 'webcam off: the window is not painted');
-      await Promise.all([win.waitForEvent('close'), win.click('#svStop')]);
+      await stopFrom(win);
       await edited(off.page);
       await off.context.close();
 
