@@ -30,4 +30,11 @@
   <symbol id="i-size-s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></symbol>
   <symbol id="i-size-m" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.25" fill="currentColor"/></symbol>
   <symbol id="i-size-l" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor"/></symbol>
+  <!-- Script: three lines of text and a short fourth. Pause: two bars. Minus and plus: slower and faster. -->
+  <symbol id="i-script" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 5.25h17M3.5 10h17M3.5 14.75h17M3.5 19.5h9"/></g></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M5.75 4.75h4.5v14.5h-4.5zM13.75 4.75h4.5v14.5h-4.5z" fill="currentColor"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M4.5 12h15"/></g></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M4.5 12h15M12 4.5v15"/></g></symbol>
+  <!-- Window: a frame with a small picture in its lower right corner (the floating self-view). -->
+  <symbol id="i-window" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M11.5 11h7v5.5h-7z" fill="currentColor"/></symbol>
 </svg>

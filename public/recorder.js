@@ -2,12 +2,15 @@
 // Recording logic comes from the spike (spike/spike.js), which proved it on
 // Chrome. The two recorders (screen, camera) live in tracks.js; step 3
 // (edit, upload) in editor.js; the webcam bubble's position and drawing in
-// bubble.js.
+// bubble.js; the floating self-view window in selfview.js and its script in
+// prompter.js.
 import { requirePassword } from './auth.js';
 import { openEditor, closeEditor, editorState } from './editor.js';
 import { say, busy } from './ui.js';
 import * as bubble from './bubble.js';
 import { startTracks, heap } from './tracks.js';
+import * as selfview from './selfview.js';
+import { attachInput } from './prompter.js';
 
 const MAX_W = 1920, MAX_H = 1080, FPS = 30;
 const $ = (id) => document.getElementById(id);
@@ -18,11 +21,13 @@ const ui = {
   canvas: $('canvas'), screenVideo: $('screenVideo'), camVideo: $('camVideo'),
   countdown: $('countdown'), flap: $('flap'), recordMsg: $('recordMsg'), recordSummary: $('recordSummary'),
   details: $('details'), band1: $('band1'), band2: $('band2'), band3: $('band3'), stage: $('stage'), frame: $('frame'),
+  showWindow: $('showWindow'), viewNote: $('viewNote'),
 };
 
 // phase: idle -> shared -> countdown -> recording -> stopped
+// surface: what is shared ('browser', 'window', 'monitor' for the whole screen), from the browser.
 const state = {
-  phase: 'idle', screen: null, cam: null, mic: null, session: null,
+  phase: 'idle', screen: null, cam: null, mic: null, session: null, surface: null,
   drawing: false, timerHandle: null, startedAt: 0, stoppedAt: 0, framesDrawn: 0, withCamera: false,
 };
 let tracks = null; // what the last recording produced, for the test: {screen, camera, cameraOffset, cameraLostAt}
@@ -58,6 +63,8 @@ function setPhase(phase) {
   busy(ui.start, phase === 'countdown');
   ui.stage.hidden = phase === 'stopped';
   ui.stage.dataset.live = String(phase === 'recording');
+  scriptBox.setRecording(phase === 'recording');
+  selfViewChanged();
 }
 
 // ---------- Details (for bug reports) ----------
@@ -109,6 +116,8 @@ async function share() {
   ui.canvas.width = Math.round(width * scale) & ~1;
   ui.canvas.height = Math.round(height * scale) & ~1;
   live.setFrame(ui.canvas.width, ui.canvas.height);
+  state.surface = displaySurface || null;
+  selfview.prepare(ui.canvas.width / ui.canvas.height); // only where classic picture-in-picture stands in for the window
   ui.screenVideo.srcObject = state.screen;
   await ui.screenVideo.play().catch(() => {});
   track.addEventListener('ended', onShareEnded);
@@ -167,8 +176,11 @@ function updatePreview() {
   ui.screenVideo.classList.toggle('helper', composite || !state.screen);
   ui.frame.dataset.source = state.screen ? 'live' : 'empty';
   live.setLive(composite ? state.cam : null);
-  setDrawing(composite);
+  updateDrawing();
 }
+
+// The ticker runs while the preview shows the composite or the self-view window is open.
+function updateDrawing() { setDrawing((!!state.cam && !!state.screen) || selfview.isOpen()); }
 
 function onShareEnded() {
   if (state.phase === 'recording') {
@@ -182,8 +194,10 @@ function onShareEnded() {
 
 // Stops every capture and resets steps 1 and 2.
 function releaseAll() {
+  selfview.close();
   for (const s of [state.screen, state.cam, state.mic]) stopStream(s);
   state.screen = state.cam = state.mic = null;
+  state.surface = null;
   ui.screenVideo.srcObject = ui.camVideo.srcObject = null;
   setDrawing(false);
   setPhase('idle');
@@ -198,12 +212,49 @@ function releaseAll() {
 // The canvas is the live preview only: what the recording will look like
 // with the bubble where it sits now. It is not recorded; the screen and the
 // camera are (tracks.js), and the bubble is drawn at export.
+// The same tick paints the self-view window (one more draw) and moves its
+// clock, so a hidden tab's slowed timers do not hold the window back.
 function drawFrame() {
-  if (state.phase === 'recording') state.framesDrawn++;
-  const ctx = ui.canvas.getContext('2d');
-  const { width: W, height: H } = ui.canvas;
-  if (ui.screenVideo.readyState >= 2) ctx.drawImage(ui.screenVideo, 0, 0, W, H);
-  if (state.cam && ui.camVideo.readyState >= 2) bubble.draw(ctx, ui.camVideo, W, H);
+  const composite = !!state.cam && !!state.screen;
+  if (composite) {
+    if (state.phase === 'recording') state.framesDrawn++;
+    const ctx = ui.canvas.getContext('2d');
+    const { width: W, height: H } = ui.canvas;
+    if (ui.screenVideo.readyState >= 2) ctx.drawImage(ui.screenVideo, 0, 0, W, H);
+    if (ui.camVideo.readyState >= 2) bubble.draw(ctx, ui.camVideo, W, H);
+  }
+  if (!selfview.isOpen()) return;
+  if (state.phase === 'recording') selfview.setClock(fmtClock((performance.now() - state.startedAt) / 1000));
+  selfview.paint({ preview: composite ? ui.canvas : null, screen: ui.screenVideo, cam: state.cam ? ui.camVideo : null });
+}
+
+// ---------- The self-view window (selfview.js) ----------
+// Opened from a click (Start, or Show window): the browser needs the gesture.
+// fresh: a new recording, so the window starts at its default view.
+function openSelfView(fresh) {
+  const { videoWidth: cw, videoHeight: ch } = ui.camVideo;
+  selfview.open({
+    fresh,
+    withCamera: !!state.cam,
+    wholeScreen: state.surface === 'monitor',
+    aspect: ui.canvas.width / ui.canvas.height,
+    camAspect: cw && ch ? cw / ch : 16 / 9,
+    script: scriptBox.text(),
+    onStop: stopRecording,
+    onChange: selfViewChanged,
+    note: (text) => note('self-view', text),
+  });
+}
+
+// While recording: the whole-screen note when the window is open, Show window when it is not.
+function selfViewChanged() {
+  const live = (state.phase === 'countdown' || state.phase === 'recording') && !state.session?.stopping;
+  const open = selfview.isOpen();
+  ui.showWindow.hidden = !(live && !open && selfview.mode() !== 'none');
+  const whole = live && open && state.surface === 'monitor';
+  ui.viewNote.textContent = whole ? selfview.WHOLE_SCREEN_NOTE : '';
+  ui.viewNote.hidden = !whole;
+  updateDrawing();
 }
 
 // One split-flap change: the old number's top half falls away and the new
@@ -215,9 +266,18 @@ function flip(from, to) {
   f.classList.remove('flipping');
   void f.offsetWidth; // restart the animation
   f.classList.add('flipping');
+  selfview.setCount(to);
 }
 
-async function startRecording() {
+// Start: the self-view window opens first, while the click still counts as
+// a gesture (the countdown's waits would use it up), then 3-2-1 runs on the
+// page and in the window.
+function startRecording() {
+  openSelfView(true);
+  return countdown();
+}
+
+async function countdown() {
   setPhase('countdown');
   for (const el of [ui.start, ui.share, ui.cam, ui.mic]) el.disabled = true;
   ui.countdown.hidden = false;
@@ -242,37 +302,46 @@ async function startRecording() {
     });
   } catch (err) {
     say(ui.recordMsg, `This browser cannot record this source (${err.message}). Turn the webcam off, or share something else, and try again.`);
+    selfview.close();
     setPhase('shared');
     for (const el of [ui.start, ui.share, ui.cam, ui.mic]) el.disabled = false;
     return;
   }
   state.withCamera = state.session.cameraOffset !== null;
-  setPhase('recording');
   state.startedAt = performance.now();
+  setPhase('recording');
+  selfview.setPhase('recording');
   state.framesDrawn = 0;
   state.timerHandle = setInterval(() => {
     ui.timer.textContent = fmtClock((performance.now() - state.startedAt) / 1000);
+    selfview.setClock(ui.timer.textContent);
     heap.sample();
   }, 250);
   ui.timer.textContent = fmtClock(0);
+  selfview.setClock(ui.timer.textContent);
   ui.recDot.hidden = false;
   ui.stop.disabled = false;
   note('codec', state.session.mimeType || '(browser default)');
 }
 
 function finishCountdownCancelled() {
+  selfview.close();
   ui.countdown.hidden = true;
   busy(ui.start, false);
   for (const el of [ui.share, ui.cam, ui.mic]) el.disabled = false;
 }
 
+// Stop on the page, Stop in the self-view window, or the share ending. The
+// window closes here, before onRecordingStopped runs.
 function stopRecording() {
   if (state.phase !== 'recording' || !state.session) return;
   if (!state.session.stopping) state.stoppedAt = performance.now();
   clearInterval(state.timerHandle);
   ui.stop.disabled = true;
   ui.recDot.hidden = true;
-  state.session.stop().then(onRecordingStopped);
+  const stopped = state.session.stop();
+  selfview.close();
+  stopped.then(onRecordingStopped);
 }
 
 async function onRecordingStopped(result) {
@@ -310,6 +379,8 @@ ui.cam.addEventListener('change', () => { live.setCam(ui.cam.checked); if (state
 ui.mic.addEventListener('change', () => { if (state.phase === 'shared') syncDevices(); });
 ui.start.addEventListener('click', startRecording);
 ui.stop.addEventListener('click', stopRecording);
+ui.showWindow.addEventListener('click', () => openSelfView(false));
+const scriptBox = attachInput({ toggle: $('scriptOn'), row: $('scriptRow'), input: $('script') });
 
 note('browser', navigator.userAgent);
 if (!navigator.mediaDevices?.getDisplayMedia || !window.MediaRecorder) {
@@ -326,6 +397,7 @@ window.__vignette = {
   state, details, editor: editorState,
   get tracks() { return tracks; },
   bubble: { get: bubble.get, set: bubble.set, get lastDraw() { return bubble.lastDraw; } },
+  selfview: selfview.hooks, // what the self-view window is doing; the list is at the top of selfview.js
 };
 
 requirePassword(ui.gate, () => { ui.app.hidden = false; });

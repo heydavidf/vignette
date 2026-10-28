@@ -15,6 +15,16 @@ Notable changes to Vignette. Versions follow [Semantic Versioning](https://semve
 - If the camera is unplugged or its permission taken back mid-recording, the screen keeps recording and the bubble holds the camera's last frame; the Details panel says when it happened.
 - The Details panel reports both file sizes, how much later the camera started and the render speed, plus the peak JavaScript heap. That heap is not the page's whole memory use: measured from outside on an Apple M1 Max (one run, renderer process only), a 60 second recording took about 757 MB, and about 1.04 GB while preparing and rendering (see README limits).
 
+### Floating self-view window
+
+- **Start recording** opens a small window that stays on top of other apps: 3-2-1 (the same split-flap flip as the page), then the picture being recorded, a red dot, the time and a Stop square that works like Stop on the page. Two squares switch the picture between the screen with the bubble and the camera alone. The window closes when the recording stops.
+- Closing the window by hand keeps the recording going; **Show window** in step 2 opens it again, with the script where it was (same place, speed and pause). Stop in the window is off during the countdown, as on the page.
+- Sharing the whole screen puts the window in the recording, so it then opens on the camera alone, and the window (under its controls) and the page say: "This window is in the recording. Move it to another screen, or share a window instead." The other view is still a click away.
+- With the webcam off the window shows the screen; the camera-only square is off.
+- New **Script** toggle in step 1: a text box for notes to read while recording, under the toggles (above Share screen on phones). The window shows them under the picture, scrolling slowly (one line every 2.5 s), with squares for slower, pause and faster (0.5x to 2x); the wheel or a drag scrolls by hand and holds the scroll for 3 s. With reduced motion it starts paused. The text stays in the browser tab (sessionStorage) and is never uploaded.
+- The window is Document Picture-in-Picture (Chrome and Edge). Browsers without it but with classic picture-in-picture get a video of the picture with the dot and the time on a black strip under it (no Stop, no script); others get nothing. If the browser refuses the window, the recording goes on without it. Details says which was used.
+- New pictograms: script, pause, minus, plus, window.
+
 ### Server and setup
 
 - New owner-only route `GET /api/videos/:id/raw/screen|camera` (with Range support) for the originals. They are stored under `raw/` in R2 and never served by `/media` or any public path. Uploads take `?track=screen|camera` on the existing blob, parts and complete routes.

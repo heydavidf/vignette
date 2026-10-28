@@ -45,6 +45,7 @@ Everything deliberately left out of v0.1. The rule from `MVP_SPEC.md` holds: if 
 - **Transcoding fallback** for very large recordings that do not fit in browser memory (v0.1 keeps the whole recording in memory while editing).
 - **Resumable uploads across page reloads** (v0.1 retries within the same page only).
 - **Upload progress inside a part** (v0.1 reports progress per 20 MiB part, because it uses `fetch` rather than XHR).
+- **Split `test/e2e.mjs`** before the next step is added: it is at 492 lines, just under the 500-line rule (the server and browser setup could move to a `test/harness.mjs`).
 
 ## Added 2026-10-19 (David's direction after the MVP)
 

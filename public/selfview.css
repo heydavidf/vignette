@@ -1,0 +1,116 @@
+/* The self-view window: a black Live band in miniature that floats over
+   other apps while recording (selfview.js builds it). The picture at the
+   top with no frame, then the bar (recording dot, clock, view toggle,
+   Stop), the whole-screen note when it applies, then the script panel when
+   there is a script. Linked after tokens.css, which brings the font, the
+   palette and the black surface's colours; nothing in the window is cream.
+   The picture keeps its shape at the window's width (--ar, set by
+   selfview.js) and gives way only if the window is too short; the script
+   takes what is left, at least 40%. */
+
+html { height: 100%; background: var(--black); }
+body.sv { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+
+/* The picture: what is being recorded, at the top, scaled to fit. */
+.sv-pic { position: relative; flex: 0 1 auto; aspect-ratio: var(--ar, 16 / 9); min-height: 72px; background: var(--black); container-type: size; }
+#svCanvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: top center; }
+
+/* The countdown: one split-flap digit on a scrim, as over the page's well,
+   with the page's 200ms flip (app.css), larger for the small window. */
+.sv-count { position: absolute; inset: 0; display: grid; place-items: center; background: rgb(11 11 11 / .6); }
+.sv-flap {
+  position: relative; display: grid; place-items: center; width: 1.3em; height: 1.3em;
+  font-weight: 700; font-size: min(50cqh, 28cqw); line-height: 1; font-variant-numeric: tabular-nums;
+  color: var(--white); background: var(--black); perspective: 3em;
+  -webkit-mask: linear-gradient(#000 0 calc(50% - 2px), transparent 0 calc(50% + 2px), #000 0);
+  mask: linear-gradient(#000 0 calc(50% - 2px), transparent 0 calc(50% + 2px), #000 0);
+}
+.sv-flap::before, .sv-flap::after { position: absolute; inset: 0; display: grid; place-items: center; background: var(--black); backface-visibility: hidden; }
+.sv-flap::before { content: attr(data-from); clip-path: inset(0 0 50% 0); transform: rotateX(-90deg); }
+.sv-flap::after { content: attr(data-to); clip-path: inset(50% 0 0 0); }
+.sv-flap.flipping::before { animation: sv-flap-top 200ms cubic-bezier(.55, 0, .9, .4) both; }
+.sv-flap.flipping::after { animation: sv-flap-bottom 200ms var(--ease) both; }
+@keyframes sv-flap-top { from { transform: rotateX(0); filter: brightness(1); } 50%, to { transform: rotateX(-90deg); filter: brightness(.35); } }
+@keyframes sv-flap-bottom { 0%, 50% { transform: rotateX(90deg); filter: brightness(.35); } to { transform: rotateX(0); filter: brightness(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .sv-flap.flipping::before, .sv-flap.flipping::after { animation: none; }
+}
+
+/* The bar: the dot and the clock at the left, the view toggle and Stop at the right. */
+.sv-bar { flex: none; display: flex; align-items: center; gap: 12px; padding: 12px; }
+.sv-time { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; min-width: 0; }
+.sv-dot { display: inline-flex; }
+.sv-dot .glyph { width: 1.1rem; height: 1.1rem; color: var(--vermilion); }
+.sv-clock { font-weight: 700; font-size: var(--t2); line-height: 1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--white); }
+
+/* View: two plates in one strip, like the bubble sizes; the chosen one is
+   filled white. selfview.js lights it with data-on (the Picture-in-Picture
+   window did not repaint :checked on these radios). */
+.sv-views { display: inline-flex; margin: 0; padding: 0; border: 0; min-width: 0; }
+.sv-seg {
+  position: relative; display: grid; place-items: center; width: var(--sq); height: var(--sq);
+  color: var(--white); box-shadow: inset 0 0 0 var(--line-w) var(--white); cursor: pointer;
+}
+.sv-seg + .sv-seg { margin-left: calc(-1 * var(--line-w)); }
+.sv-seg input {
+  appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  border: 0; border-radius: 0; background: transparent; cursor: pointer;
+}
+.sv-seg .glyph { position: relative; width: 56%; height: 56%; pointer-events: none; }
+.sv-seg[data-on="true"] { background: var(--white); }
+.sv-seg[data-on="true"] .glyph { color: var(--black); }
+.sv-seg:not([data-on="true"]):hover:not(:has(input:disabled)) { box-shadow: inset 0 0 0 4px var(--white); }
+.sv-seg input:active:not(:disabled) ~ .glyph { transform: scale(.86); }
+.sv-seg input:focus-visible { z-index: 1; }
+.sv-seg:has(input:disabled) {
+  cursor: not-allowed; color: color-mix(in srgb, var(--white) 45%, transparent);
+  box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--white) 30%, transparent);
+}
+.sv-seg input:disabled { cursor: not-allowed; }
+
+/* Stop: the vermilion square with the stop glyph, as on the page. */
+.sv-stop {
+  display: grid; place-items: center; width: var(--sq); height: var(--sq); padding: 0;
+  border: 0; border-radius: 0; background: var(--vermilion); color: var(--white); cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.sv-stop .glyph { width: 56%; height: 56%; }
+.sv-stop:hover:not(:disabled) { background: var(--white); color: var(--black); }
+.sv-stop:active:not(:disabled) { background: var(--frame); color: var(--white); }
+/* During the countdown there is nothing to stop yet: the plate goes quiet, like the other disabled plates. */
+.sv-stop:disabled {
+  cursor: not-allowed; background: transparent; color: color-mix(in srgb, var(--white) 45%, transparent);
+  box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--white) 30%, transparent);
+}
+
+/* Whole screen: the warning that this window is in the picture, under the bar. */
+.sv-note { flex: none; padding: 0 12px 12px; font-size: var(--t-small); line-height: 1.45; color: var(--ash); text-wrap: pretty; }
+
+/* The script: about 40% of the window, Body size, white on black, scrolling
+   slowly; under it the speed squares (2.75rem) and the speed. */
+.sv-script {
+  flex: 1 0 40%; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0;
+  border-top: var(--line-w) solid var(--rule-dark);
+}
+.sv-text {
+  overflow-y: auto; padding: 12px; font-size: var(--t0); line-height: 1.5; color: var(--white);
+  white-space: pre-wrap; overflow-wrap: anywhere; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.sv-text:active { cursor: grabbing; }
+.sv-text:focus-visible { outline-offset: -3px; }
+.sv-speed { display: flex; align-items: center; gap: 8px; padding: 8px 12px 12px; }
+.sv-sq {
+  --sq: 2.75rem;
+  display: grid; place-items: center; width: var(--sq); height: var(--sq); padding: 0;
+  border: 0; border-radius: 0; background: transparent; color: var(--white);
+  box-shadow: inset 0 0 0 var(--line-w) var(--white); cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+.sv-sq .glyph { width: 56%; height: 56%; }
+.sv-sq:hover:not(:disabled) { background: var(--white); color: var(--black); }
+.sv-sq:active:not(:disabled) { background: var(--frame); color: var(--white); }
+.sv-sq:disabled {
+  cursor: not-allowed; color: color-mix(in srgb, var(--white) 45%, transparent);
+  box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--white) 30%, transparent);
+}
+.sv-speed-out { margin-left: 4px; font-weight: 500; font-size: var(--t0); color: var(--ash); font-variant-numeric: tabular-nums; }

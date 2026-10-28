@@ -15,6 +15,8 @@ import { cutsScenario, CUTS_SCENARIO } from './cuts-scenario.mjs';
 import { tracksStep, TRACKS_STEP, originalsStep, ORIGINALS_STEP } from './tracks-step.mjs';
 import { migrateStep, MIGRATE_STEP, OLD_SCHEMA } from './migrate-step.mjs';
 import { tracksScenario, TRACKS_SCENARIO } from './tracks-scenario.mjs';
+import { selfviewSteps, SELFVIEW_STEP, SCRIPT_STEP, FALLBACK_STEP } from './selfview-step.mjs';
+import { selfviewScenario, SELFVIEW_SCENARIO } from './selfview-scenario.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const wranglerBin = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
@@ -315,6 +317,15 @@ try {
   await originalsStep(page, { record, assert, ok, base, auth, listVideos, viewer: async () => watch(await context.newPage(), 'originals viewer') });
   step(TRACKS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
   await tracksScenario(page, { record, assert, ok, base, api, viewer: async () => watch(await context.newPage(), 'tracks viewer') });
+
+  const selfview = selfviewSteps({ browser, base, login, pageHooks, watch, assert, ok }); // each in its own context
+  step(SELFVIEW_STEP);
+  await selfview.windowStep();
+  step(SCRIPT_STEP);
+  await selfview.scriptStep();
+  step(FALLBACK_STEP);
+  await selfview.fallbackStep();
+  step(SELFVIEW_SCENARIO); await selfviewScenario(page, { record, assert, ok, base, login, pageHooks, watch }); // the independent scenario test (AGENTS.md rule 5)
 
   step('4. Share page');
   const share = await fetch(`${base}/v/${id}`);

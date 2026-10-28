@@ -106,9 +106,14 @@ To change the code rather than install it, `AGENTS.md` has the file map, the che
 
 Your recordings are listed at `/library`, where you can copy links, open or delete them.
 
+### While you record
+
+Clicking **Start recording** opens a small floating window that stays on top of your other apps, so you can work anywhere and still see what is being recorded. It shows the countdown, then the picture (with your webcam bubble, or the camera alone: two squares switch between them), a red dot, the time, and a Stop square that stops the recording like Stop on the page. The window closes when the recording stops. Closing it yourself does not stop the recording; **Show window** on the page opens it again. If you share your whole screen, the window is part of the picture, so it opens on the camera alone and says so: move it to another screen, or share a window instead. To read from notes, turn on **Script** in step 1 and type or paste them: the window shows them in a panel under the picture that scrolls slowly, with squares to slow down, pause and speed up, and the wheel or a drag to scroll by hand. The script stays in that browser tab and is never uploaded. Browsers without this kind of window (Safari today, not yet tested) get a picture-in-picture video instead, with the time on a strip under the picture and no Stop or script; Details says which one was used.
+
 ## Limits and honesty
 
 - **Chrome and Edge first.** Safari and Firefox may work partly; they are not tested yet.
+- **The floating window is Chrome and Edge only** (Document Picture-in-Picture). Browsers with only classic picture-in-picture (Safari should be one; not tested yet) get a picture-in-picture video instead, with no Stop or script in it. Firefox has neither, so nothing floats there.
 - **Permission prompt every time.** Browsers ask before each screen share. That is a browser rule, not a Vignette choice.
 - **1080p at 30 frames per second is the ceiling.** Bigger screens are scaled down to fit.
 - **Cuts re-encode the video.** Trimming the ends copies the recording as it is (Mediabunny re-encodes only when a trim point does not fall on a keyframe). Cutting out the middle makes the browser encode the video again (H.264 at 5 Mbps), which takes a moment and needs memory for both copies. Each join can carry up to about 20 ms of extra sound. No zoom effects or captions yet (see `docs/BACKLOG.md`).
@@ -151,6 +156,7 @@ Where things live:
 - `public/recorder.js`: screen, webcam and mic capture, the live preview, the steps' state.
 - `public/tracks.js`: the two recorders (screen with the sound, camera alone) and keeping the camera in step with the screen in the edit preview.
 - `public/bubble.js`: the webcam bubble you drag over the live preview and over the edit step's player; one stored place for both.
+- `public/selfview.js`, `public/selfview.css`: the floating window shown while recording (picture, time, Stop, view toggle) and its picture-in-picture stand-in. `public/prompter.js`: the script toggle and the window's scrolling script panel.
 - `public/editor.js`: the edit and upload steps. `public/media.js`: re-packaging, trimming, probing and thumbnails with Mediabunny.
 - `public/render.js`: the export with the webcam on: the screen and the camera decoded side by side and the bubble drawn into every frame.
 - `public/cuts.js`: mid-section cuts: the cut controls, cut skipping in the preview, and the re-encode that removes them.

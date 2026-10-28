@@ -55,6 +55,14 @@
               <span class="sq tg"><input id="mic" type="checkbox" checked><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-mic"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
               <span class="toggle-label">Microphone</span>
             </label>
+            <label class="toggle">
+              <span class="sq tg"><input id="scriptOn" type="checkbox" aria-controls="scriptRow"><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-script"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
+              <span class="toggle-label">Script</span>
+            </label>
+          </div>
+          <!-- The script for the self-view window's panel. Kept in this tab only (sessionStorage), never uploaded. -->
+          <div id="scriptRow" class="script-row" hidden>
+            <label class="script-field"><span class="vh">Script text</span><textarea id="script" rows="4" placeholder="Notes to read while you record. Only you see them."></textarea></label>
           </div>
           <button id="share" type="button" class="act band-action">
             <span class="act-label"><span class="if-open">Share screen</span><span class="if-done">Share again</span></span>
@@ -93,6 +101,11 @@
           <div id="recordStep" class="band-body" hidden>
             <p class="band-note if-open">A 3 second countdown runs first. Work in any tab; recording carries on.</p>
             <p class="band-note if-live">Recording. Stop when you are done.</p>
+            <!-- The floating self-view window (selfview.js): its whole-screen note while it is open, Show window once it is closed. -->
+            <div class="band-tools view-tools">
+              <p id="viewNote" class="view-note" hidden></p>
+              <button id="showWindow" type="button" class="act act--quiet" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-window"/></svg></span><span class="act-label">Show window</span></button>
+            </div>
             <div class="band-action">
               <button id="start" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Start recording</span></button>
               <button id="stop" type="button" class="act" disabled><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-stop"/></svg></span><span class="act-label">Stop</span></button>

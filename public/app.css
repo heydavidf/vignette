@@ -60,6 +60,37 @@
 .cam-group { display: flex; align-items: center; gap: 12px 14px; }
 .seg input:focus-visible { z-index: 1; }
 
+/* Script: a plain text box in step 1's grid, shown by the Script toggle (and
+   hidden while recording, by prompter.js). It spans the tools and the action
+   columns under the tools; on phones it sits above the action. The area
+   exists only while the box shows, so step 1 keeps its height without it.
+   The self-view window scrolls the text while recording. */
+#band1:has(#scriptRow:not([hidden])) .band-grid {
+  grid-template-columns: minmax(max-content, 1fr) auto auto; /* the tools column hugs the toggles, so the box starts under the first */
+  grid-template-areas: "title tools action" "note tools action" ". script script" "alert alert alert";
+}
+#band1[data-state="done"]:has(#scriptRow:not([hidden])) .band-grid {
+  grid-template-columns: auto minmax(0, 1fr) max-content auto; /* the toggles stay on one line over the box */
+  grid-template-areas: "title note tools action" ". . script script" "alert alert alert alert";
+}
+#band1:has(#scriptRow:not([hidden])) .band-tools { justify-content: flex-start; } /* if they wrap, they still start where the box does */
+.script-row { grid-area: script; margin-top: 10px; }
+.band[data-state="done"] .script-row { margin-top: 4px; }
+.script-field { display: block; }
+#script {
+  display: block; width: 100%; min-height: var(--sq-lg); margin: 0; padding: 10px 14px;
+  border: var(--line-w) solid var(--black); border-radius: 0; background: var(--grey); color: var(--black);
+  font-size: var(--t1); line-height: 1.35; resize: vertical; caret-color: var(--black);
+  --sel-bg: var(--black); --sel-fg: var(--band);
+}
+#script::placeholder { color: var(--slate); opacity: 1; }
+#script:hover { box-shadow: inset 0 0 0 1px var(--black); }
+#script:focus-visible { outline-offset: 2px; }
+
+/* Step 2 while the self-view window is in play: its whole-screen note, or Show window once it is closed. */
+.view-note { max-width: 46ch; font-size: var(--t1); line-height: 1.35; color: var(--fg-2); text-wrap: pretty; }
+.view-tools:not(:has(> :not([hidden]))) { display: none; } /* empty, it would add a row on narrow screens */
+
 /* ---------- Stage: the preview well and the clock ---------- */
 .stage { padding-block: 24px; border-top: var(--line-w) solid var(--rule-dark); transition: background-color 200ms var(--ease), color 200ms var(--ease); }
 .stage-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 20px 32px; }
@@ -274,6 +305,8 @@ progress::-moz-progress-bar { background: var(--black); }
   .band[data-state="done"] .band-grid { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title note action" "tools tools tools" "alert alert alert"; }
   .band[data-state="done"] .band-tools { margin-top: 4px; }
   .editor { grid-template-columns: minmax(0, 1fr); }
+  #band1:has(#scriptRow:not([hidden])) .band-grid { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title action" "note action" "tools tools" "script script" "alert alert"; }
+  #band1[data-state="done"]:has(#scriptRow:not([hidden])) .band-grid { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "title note action" "tools tools tools" "script script script" "alert alert alert"; }
 }
 @media (max-width: 720px) {
   .band-grid, .band[data-state="done"] .band-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "note" "tools" "action" "alert"; }
@@ -287,4 +320,7 @@ progress::-moz-progress-bar { background: var(--black); }
   .frame-empty br { display: none; }
   .cam-group { display: grid; grid-template-columns: auto auto; justify-content: start; }
   .cam-group .sizes { grid-column: 2; }
+  #band1:has(#scriptRow:not([hidden])) .band-grid, #band1[data-state="done"]:has(#scriptRow:not([hidden])) .band-grid {
+    grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "note" "tools" "script" "action" "alert";
+  }
 }
