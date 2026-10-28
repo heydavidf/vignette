@@ -3,14 +3,17 @@
 // Chrome. The two recorders (screen, camera) live in tracks.js; step 3
 // (edit, upload) in editor.js; the webcam bubble's position and drawing in
 // bubble.js; the floating self-view window in selfview.js and its script in
-// prompter.js.
-import { requirePassword } from './auth.js';
-import { openEditor, closeEditor, editorState } from './editor.js';
+// prompter.js. Opened as /?again=<id> (the library's Change layout), it
+// loads an uploaded recording's originals (again.js) straight into step 3.
+import { requirePassword, showGateAgain } from './auth.js';
+import { openEditor, closeEditor, editorState, layout } from './editor.js';
 import { say, busy } from './ui.js';
 import * as bubble from './bubble.js';
 import { startTracks, heap } from './tracks.js';
 import * as selfview from './selfview.js';
 import { attachInput } from './prompter.js';
+import { againParam, loadAgain, AgainError, hooks as againHooks } from './again.js';
+import { parseLayout } from './layouts.js';
 
 const MAX_W = 1920, MAX_H = 1080, FPS = 30;
 const $ = (id) => document.getElementById(id);
@@ -63,7 +66,7 @@ function setPhase(phase) {
   busy(ui.start, phase === 'countdown');
   ui.stage.hidden = phase === 'stopped';
   ui.stage.dataset.live = String(phase === 'recording');
-  scriptBox.setRecording(phase === 'recording');
+  scriptBox.setRecording(phase === 'recording' || ui.band1.dataset.again === 'on'); // the script box hides while recording and while rendering again
   selfViewChanged();
 }
 
@@ -105,6 +108,7 @@ async function share() {
   } finally {
     busy(ui.share, false);
   }
+  leaveAgain();
   releaseAll();
   closeEditor();
   state.screen = screen;
@@ -373,6 +377,69 @@ async function onRecordingStopped(result) {
   await openEditor(result, note);
 }
 
+// ---------- Rendering an uploaded recording again (/?again=<id>) ----------
+// Step 1's note shows the download; then steps 1 and 2 read as done and the
+// edit step opens with the originals, the title, the layout and the bubble
+// as they were uploaded. A new share leaves this mode.
+let againAbort = null;
+async function startAgain({ id }) {
+  if (againHooks.state === 'loading' || againHooks.state === 'ready') return; // the gate can call this twice
+  Object.assign(againHooks, { state: 'loading', id, progress: { sent: 0, total: 0 }, error: '' });
+  markAgain(true);
+  againAbort = new AbortController();
+  const { signal } = againAbort;
+  const mb = (n, total) => (total < 10 * 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) : String(Math.round(n / 1024 / 1024)));
+  ui.source.textContent = 'Loading the originals...';
+  const t0 = performance.now();
+  try {
+    if (!id) throw Object.assign(new Error('That link does not name a recording. Open it again from your library.'), { plain: true });
+    const { row, screen, camera } = await loadAgain(id, {
+      signal,
+      onProgress: (sent, total) => {
+        againHooks.progress = { sent, total };
+        ui.source.textContent = `Loading the originals: ${mb(sent, total)} of ${mb(total, total)} MB`;
+      },
+    });
+    if (signal.aborted) return;
+    note('rendering again', `${row.id}, originals ${fmtMB(screen.size + camera.size)} loaded in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    tracks = { screen, camera, cameraOffset: row.camera_offset || 0, cameraLostAt: null };
+    setPhase('stopped');
+    ui.source.textContent = `Rendering again: ${row.title}`;
+    ui.recordSummary.textContent = 'The originals, as recorded.';
+    againHooks.state = 'ready';
+    const stored = parseLayout(row.layout);
+    await openEditor(tracks, note, { id: row.id, title: row.title, layout: stored.id, colour: stored.colour, bubble: row.bubble });
+  } catch (err) {
+    if (signal.aborted) return; // a new share left this mode
+    againAbort.abort(); // the other original stops downloading too
+    ui.source.textContent = 'Nothing shared yet.';
+    againHooks.state = 'off';
+    markAgain(false);
+    if (err.status === 401) return showGateAgain(ui.gate, 'The server did not accept the password. Enter it again to load the recording.');
+    const text = err.plain || err instanceof AgainError ? err.message
+      : `Could not load the originals (${err.status ? err.message : 'the connection to the server dropped'}). Reload the page to try again.`;
+    Object.assign(againHooks, { state: 'failed', error: text });
+    say(ui.setupMsg, `${text} `);
+    ui.setupMsg.append(Object.assign(document.createElement('a'), { href: '/', textContent: 'Record another' }));
+    note('rendering again', `failed: ${text}`);
+  }
+}
+// Step 1's webcam, microphone and script toggles are for a new recording, so
+// while the page is about an uploaded one they hide (app.css); Share again
+// leaves the mode and brings them back.
+function markAgain(on) {
+  ui.band1.dataset.again = on ? 'on' : 'off';
+  scriptBox.setRecording(state.phase === 'recording' || on);
+}
+// A new share starts a new recording: the page is no longer about the old one.
+function leaveAgain() {
+  if (againHooks.state === 'off') return;
+  markAgain(false);
+  againAbort?.abort();
+  Object.assign(againHooks, { state: 'off', id: null, error: '' });
+  history.replaceState(null, '', location.pathname);
+}
+
 // ---------- Wire up ----------
 ui.share.addEventListener('click', share);
 ui.cam.addEventListener('change', () => { live.setCam(ui.cam.checked); if (state.phase === 'shared') syncDevices(); });
@@ -398,6 +465,18 @@ window.__vignette = {
   get tracks() { return tracks; },
   bubble: { get: bubble.get, set: bubble.set, get lastDraw() { return bubble.lastDraw; } },
   selfview: selfview.hooks, // what the self-view window is doing; the list is at the top of selfview.js
+  // The edit step's layout and the again mode; the list is at the top of layouts.js.
+  layout: {
+    get id() { return layout.get().id; }, get colour() { return layout.get().colour; }, get value() { return layout.get().value; },
+    get shape() { return bubble.get().shape; }, get offered() { return layout.offered; },
+    set: (id, colour) => layout.set(id, colour), geometry: () => layout.geometry(),
+  },
+  again: againHooks,
 };
 
-requirePassword(ui.gate, () => { ui.app.hidden = false; });
+// After the password (again after a 401): load the recording the address names, if it still names one.
+requirePassword(ui.gate, () => {
+  ui.app.hidden = false;
+  const again = againParam();
+  if (again) startAgain(again);
+});

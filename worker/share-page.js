@@ -48,6 +48,10 @@ export function sharePageResponse(row, origin, nonce) {
     : '';
   // Width and height give the player its shape before the video loads.
   const dims = row.width && row.height ? ` width="${row.width}" height="${row.height}"` : '';
+  // The version, from the file's size: a recording rendered again (same link,
+  // new file) gets new media and thumbnail addresses, so no browser mixes a
+  // cached part of the old file with the new one. The routes ignore it.
+  const v = `v=${Number(row.size).toString(36)}`;
 
   const html = `<!doctype html>
 <html lang="en">
@@ -57,8 +61,8 @@ ${HEAD}
 <meta property="og:title" content="${title}">
 <meta property="og:type" content="video.other">
 <meta property="og:url" content="${site}/v/${id}">
-<meta property="og:image" content="${site}/thumb/${id}">
-<meta property="og:video" content="${site}/media/${id}">
+<meta property="og:image" content="${site}/thumb/${id}?${v}">
+<meta property="og:video" content="${site}/media/${id}?${v}">
 <meta property="og:video:type" content="video/mp4">
 ${size}
 <meta property="og:description" content="${description}">
@@ -73,11 +77,11 @@ ${TOP}
 <p class="runtime"><span class="vh">Runtime </span>${duration}</p>
 </div></section>
 <section class="well on-grey"><div class="wrap">
-<div class="screen"><video controls playsinline preload="metadata"${dims} poster="/thumb/${id}" src="/media/${id}"></video></div>
+<div class="screen"><video controls playsinline preload="metadata"${dims} poster="/thumb/${id}?${v}" src="/media/${id}?${v}"></video></div>
 <div class="share-row">
 <div class="share-acts">
 <button type="button" id="copy" class="act"><span class="sq">${glyph('copy')}</span><span class="act-label">Copy link</span></button>
-<a class="act" href="/media/${id}" download="${fileName}"><span class="sq">${glyph('download')}</span><span class="act-label">Download</span></a>
+<a class="act" href="/media/${id}?${v}" download="${fileName}"><span class="sq">${glyph('download')}</span><span class="act-label">Download</span></a>
 </div>
 <p class="facts"><time datetime="${date.toISOString()}">${isoDate}</time><span>${fmtSize(row.size)}</span></p>
 </div>

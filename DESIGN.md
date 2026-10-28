@@ -64,6 +64,7 @@ typography:
 rounded:
   none: "0px"
   bubble: "50%"
+  bubble-square: "8%"
 spacing:
   xs: "8px"
   sm: "12px"
@@ -177,6 +178,9 @@ components:
   register-square-hover:
     backgroundColor: "{colors.white}"
     textColor: "{colors.black}"
+  swatch:
+    size: "{spacing.sq}"
+    rounded: "{rounded.none}"
 ---
 
 # Design System: Vignette
@@ -196,7 +200,7 @@ Confirmed rejections: the SaaS workspace of rounded cards, a sidebar and a blue 
 - Black inset squares with white pictograms as the control vocabulary, arrows locked to the band edge
 - One humanist sans (Fira Sans) in three weights, sentence case, 1.2 ratio scale
 - Bold tabular numerals at monumental size for clocks and runtimes
-- Flat, single scheme, zero radius, 2px rules; the only circle is the webcam bubble
+- Flat, single scheme, zero radius, 2px rules; the only circle (or rounded corner) is the webcam bubble
 - Surface-scoped colour: each surface sets its own control, focus and selection colours
 
 ## Colors
@@ -218,7 +222,7 @@ Three flat paints (black, cream, grey) carry the whole system; the rest of the p
 - **Rule Dark** (`rule-dark`): rules between bands, table rows, the stage and board tops, and any rule that has to show on black.
 
 ### Named Rules
-**The One Cream Band Rule.** Exactly one band is cream on a recorder page: the step being taken. Finished and unreached steps are black. The share page's title band and the password gate count as that page's one current step. Never use cream as decoration, a badge, a hover fill on a cream surface, or on more than one band.
+**The One Cream Band Rule.** Exactly one band is cream on a recorder page: the step being taken. Finished and unreached steps are black. The share page's title band and the password gate count as that page's one current step. Never use cream as decoration, a badge, a hover fill on a cream surface, or on more than one band. The Padded layout's colour swatches are the exception that proves it: they are samples of a colour the video will carry (cream, black, grey, vermilion), not interface paint, so each sits inside a 2px black rule.
 
 **The Surface Sets The Square Rule.** Every surface declares `--sq-bg`, `--sq-fg`, `--line`, `--focus` and `--sel-bg`. On black the square is cream with a black glyph; on cream and grey it is black with a white glyph. Never hard-code a control colour; inherit it from the surface the control sits on.
 
@@ -242,7 +246,7 @@ The four vendored files are Fira Sans 400, 400 italic, 500 and 700 (OFL, `public
 - **Control** (500, 1.2rem, 1.15): every action label, toggle label, header link, text input, register cell and band note. The step down to 1rem is for done-band tools, field labels and register headings.
 - **Body** (400, 1rem, 1.5): the page default.
 - **Note** (400, 1.2rem, 1.35): the one-line note under a band title, the empty-well prompt (1.4), the library empty-state text (1.45).
-- **Small** (400, 0.875rem, 1.65, tabular): the Details readout, thumbnail hint, register dates on phones.
+- **Small** (400, 0.875rem, 1.65, tabular): the Details readout, thumbnail hint, register dates at 1280px and below.
 
 ### Named Rules
 **The Tabular Numeral Rule.** Any element that shows a number that can change (time, output, `.num`, `.tnum`, band numbers, the clock, runtimes, file sizes, dates, the share URL) sets `font-variant-numeric: tabular-nums`. Numerals that are the proof of state (clock, runtime, clip length, register runtime) are also bold (700).
@@ -262,9 +266,9 @@ The preview well sits between step 1 and step 2 on surface grey, 24px of block p
 Spacing rhythm is 8 / 10 / 12 / 14 / 16 / 20 / 24 / 28 / 32 px; stacks inside a column use 8, 10, 14, 16 or 24px gaps. There is no spacing above 40px except band and board padding.
 
 Responsive rules, in order:
+- At 1280px and below (down to 1001px) the register hides its status column (a row that is not ready says so under its title, Small in Ash), shrinks its thumbnails to 152px / 120px and sets the date at Small size in an 11.25rem column (the widest US date, "May 28, 2026, 12:08 PM", needs 147px of its 148); this step and the stacked one sit wider than the band grid's because the action column holds four squares.
 - Below 1100px: the band grid drops the tools row under the title and note (two columns, then a full-width tools row). The editor goes single column. Done bands keep title, note and action in one row with tools beneath.
-- Between 901px and 1180px: the register's status column is hidden; thumbnails shrink to 152px / 120px.
-- At 900px and below: each register row recomposes into a small sign (112px thumbnail at the left, title, run / size / status, date, then the actions), the table header goes, and the square buttons show their word next to the pictogram.
+- At 1000px and below: each register row recomposes into a small sign (112px thumbnail at the left, title, run / size / status, date, then the actions), the title stays at 1.2rem while run, size and status drop to 1rem and the date to Small, the table header goes, and the square buttons show their word next to the pictogram.
 - At 720px and below: bands go single column and the action stretches full width; the current band pads 24px top and 20px bottom; the well pads 16px and the clock moves into a row with the recording mark, counter at 4.3rem; the empty-well prompt sits at the top; the share page video bleeds to the gutters with no outline and the share actions become a grid of equal columns. The gate row stacks.
 
 ### Named Rules
@@ -287,7 +291,7 @@ Flat. There are no drop shadows, gradients or blur anywhere at rest. Depth is pa
 
 Square. Every box has 0 radius: bands, squares, inputs, plates, the trim handles, the progress bar, the share link box, the register images. Rules are 2px (bands, frames, inset rules, underlines) and 1px only for table rows. The pictogram square is the recurring silhouette: 3rem (48px) for toggles and quiet actions, 3.5rem (56px) for primary actions, 2.75rem (44px) in done bands and in the register. Pictograms are drawn on a 24px grid with 2.75 strokes, square caps and miter joins, filled with `currentColor`, and sit at 56% of the square (50% in the size strip). Unlit toggles strike their glyph with a 2.75 stroke over a 7-wide knockout in the plate colour.
 
-The one circle is the webcam bubble: a 1:1 disc, 50% radius, with a 3% black ring. Its diameter in the frame is twice its radius share of the shorter edge: small 0.10, medium 0.14, large 0.20 (so 20%, 28% and 40% of the shorter edge), kept 2.5% of the shorter edge from the picture's border. Links underline with a 2px line offset 0.22em in the secondary tone, going to the foreground on hover.
+The one circle is the webcam bubble: a 1:1 disc, 50% radius, with a 3% black ring. Its diameter in the frame is twice its radius share of the shorter edge: small 0.10, medium 0.14, large 0.20 (so 20%, 28% and 40% of the shorter edge), kept 2.5% of the shorter edge from the picture's border. Its square shape is the only other rounded corner: the same size and ring, corners rounded at 8% of its width outside and 5% inside the ring (5.32% of the inner side), so the ring keeps its width all the way round. Links underline with a 2px line offset 0.22em in the secondary tone, going to the foreground on hover.
 
 ## Components
 
@@ -301,7 +305,7 @@ The structural unit. A band is a full-width section with a 2px Rule Dark top and
 - **Band alert**: a message row under the grid, 12px above; errors become the black panel described under Messages.
 
 ### Pictogram Square
-The control atom. A 3rem square (3.5rem in primary actions) painted in the surface's square colour with a glyph at 56%. Every action, toggle, segment and register button is built on it. The glyph is a `<use>` of `public/icons.svg` (31 symbols: arrows, record, stop, play, pause (two bars), camera, mic, check, warning, copy, download, trash, library, scissors, frame, full screen (four corner brackets), window (a frame with a small filled picture at its lower right), script (three lines and a short fourth), minus, plus, mark start and end, cut from and to, size s / m / l). Cut from and to pair the mark brackets with a struck rule.
+The control atom. A 3rem square (3.5rem in primary actions) painted in the surface's square colour with a glyph at 56%. Every action, toggle, segment and register button is built on it. The glyph is a `<use>` of `public/icons.svg` (38 symbols: arrows, record, stop, play, pause (two bars), camera, mic, check, warning, copy, download, trash, library, scissors, frame, full screen (four corner brackets), window (a frame with a small filled picture at its lower right), script (three lines and a short fourth), minus, plus, mark start and end, cut from and to, size s / m / l, the five layouts and the two shapes). Cut from and to pair the mark brackets with a struck rule. The layout glyphs are each the video's frame (the same 18.5 by 14.5 outline as frame and window) with what the layout puts in it: Bubble a small filled disc at the lower left, Split a vertical rule at 70%, Camera only a small filled camera in the middle, Screen only a monitor (the frame, a little shorter, on a short stand, so it is not the frame glyph that Use current frame carries on the same step), Padded a smaller frame inside. The shape glyphs are outlines, so they never read as a size: Round a circle of radius 8, Square a 16 unit square with the bubble's 8% corners.
 
 ### Buttons
 - **Shape:** square corners (0), 2px line in the surface line colour, label 500 at 1.2rem with 1.15 leading.
@@ -312,10 +316,19 @@ The control atom. A 3rem square (3.5rem in primary actions) painted in the surfa
 - **Word buttons (`.word`, library confirm):** 2.75rem tall, 14px side padding, 2px white inset rule, 500 at 1rem; `.word--solid` is white on black for the destructive confirm.
 
 ### Toggles
-A black plate (`.tg`, Panel Frame on black surfaces, black on cream and grey) with the checkbox stretched invisibly over it and a white glyph. Unchecked: the glyph goes Smoke and a diagonal strike with a plate-coloured knockout appears. Label 500 at 1.2rem to the right with a 12px gap; hover underlines the label 2px; pressing scales the glyph to 0.86. Disabled: 45% text, 50% plate. Step 1 has three: Webcam bubble, Microphone and Script (off by default; lit, it shows the script box).
+A black plate (`.tg`, Panel Frame on black surfaces, black on cream and grey) with the checkbox stretched invisibly over it and a white glyph. Unchecked: the glyph goes Smoke and a diagonal strike with a plate-coloured knockout appears. Label 500 at 1.2rem to the right with a 12px gap; hover underlines the label 2px; pressing scales the glyph to 0.86. Disabled: 45% text, 50% plate. Step 1 has three: Webcam bubble, Microphone and Script (off by default; lit, it shows the script box). While the page renders an uploaded recording again (the library's Change layout), the three and the script box hide, since they are for a new recording; Share again brings them back.
 
 ### Bubble Size Strip
-Three 3rem segments in a row sharing one 2px inset rule (each after the first overlaps by 2px). Each holds a size glyph at 50%. The chosen segment fills with the foreground and shows its glyph in the surface's square glyph colour (black on cream). Hover on an unchosen segment thickens the inset rule to 4px.
+Three 3rem segments in a row sharing one 2px inset rule (each after the first overlaps by 2px). Each holds a size glyph at 50%. The chosen segment fills with the foreground and shows its glyph in the surface's square glyph colour (black on cream). Hover on an unchosen segment thickens the inset rule to 4px. A segment that cannot be chosen draws its rule at 30% and its glyph at 45% with a `not-allowed` cursor, and does not thicken on hover.
+
+### Layout Strip
+The edit step's first row under the player: the label "Layout" (500 at 1.2rem) then five segments built exactly as the size strip (3rem, one shared rule, glyph at 50%): Bubble, Split, Camera only, Screen only, Padded, each named by its title and a hidden word. The quiet Full screen square follows at the row's end, 24px on, whenever the layout is not Screen only. With the webcam off, Bubble, Split and Camera only are disabled segments and Screen only is chosen. While the video renders or uploads, and once the link is made, the strip goes inert at 45%.
+
+### Shape Squares
+Two more segments in the bubble's row, after the size strip and the label "Shape" (24px on): Round and Square, with outline glyphs. They show only in the Bubble layout, with the size strip and the note.
+
+### Colour Swatches
+For Padded only, a row under the layout strip: the label "Colour", then four 3rem squares 12px apart, each painted flat in its colour (cream, black, grey, vermilion) inside a 2px black inset rule. The chosen one carries the selection ring (3px of the surface, 2px of the foreground); hover on another thickens its rule to 4px; keyboard focus draws the focus outline 7px out, clear of the ring. They are radios named by their title and a hidden word. While the video renders or uploads, and once the link is made, the label and the other swatches fade to 45% and the chosen one keeps its full paint without the ring, so the row still shows the video's colour (as the bubble keeps full strength).
 
 ### Inputs / Fields
 - **Style:** surface grey fill, 2px black rule, 0 radius, min height 3.5rem, 8px by 14px padding, 500 at 1.2rem, black caret. Placeholder in Slate. Selection inside is cream on black.
@@ -332,7 +345,7 @@ Plain notes in the surface's secondary tone with a 12px gap, glyph hidden. With 
 A grey section (`.on-grey`) with a 24px block padding. The monitor is a 16:9 box up to 60vh with a 2px Panel Frame inset rule; spare width to each side of the picture is grey; the frame inside carries 2px Panel Frame side rules while empty and the Slate prompt at 1.2rem centred. When the source is live the monitor turns black with no rule and the canvas shows. The clock sits at the bottom right: a recording mark (record glyph at 1.1rem plus "Recording", 500 at 1.2rem) over the 6rem counter.
 
 ### Webcam Bubble
-A draggable, focusable circle positioned by `--bx` / `--by` (centre as a share of the frame) and sized by `--bd` (diameter as a share of frame width). Black disc with a grey inner disc inset 3%; a camera glyph at 32% in black, going Slate and struck when the camera is off. Live: the video fills the disc. Hover, keyboard focus and drag show the selection ring (so focus reads over a dark picture too; focus also keeps a transparent 2px outline, which Windows high contrast paints); dragging adds `cursor: grabbing`. Keyboard: arrows nudge 2% of the frame, Shift five times as far. It appears in two places that share one stored position: over the live well while setting up and recording, and over the edit step's player, where its final place is chosen (with the same size strip under the player, named "Bubble size" at 1.2rem 500 and followed by a quiet Full screen square that takes the picture and the bubble full screen together, and the note on its own line below at full width). There the player's picture sits at the top and its native controls on a 3.5rem strip below, so the bubble never covers them; the native full screen and picture in picture are off, and Chrome's greyed full screen button is hidden. While a render or upload runs, and once the link is made, the bubble, the size strip and the trim go inert (the strip and the trim at 45%; the bubble keeps full strength so the preview still matches the video), and the note says why ("The clip and bubble hold still while the video renders.", "The link keeps this clip and this bubble place. Record another to change them."). Step 1's size strip is hidden while the edit step has a camera. The render's progress bar carries its percent beside it, 700 tabular.
+A draggable, focusable circle positioned by `--bx` / `--by` (centre as a share of the frame) and sized by `--bd` (diameter as a share of frame width). Black disc with a grey inner disc inset 3%; a camera glyph at 32% in black, going Slate and struck when the camera is off. Live: the video fills the disc. Hover, keyboard focus and drag show the selection ring (so focus reads over a dark picture too; focus also keeps a transparent 2px outline, which Windows high contrast paints); dragging adds `cursor: grabbing`. Keyboard: arrows nudge 2% of the frame, Shift five times as far. It appears in two places that share one stored position: over the live well while setting up and recording, and over the edit step's player, where its final place is chosen (in the Bubble layout, with the same size strip under the layout strip, named "Bubble size" at 1.2rem 500, then the shape squares, and the note on its own line below at full width; Full screen sits at the end of the layout strip and takes the picture and the camera full screen together). The square shape takes the same ring, hover and focus rings and drag, with the corners above. In Split and Camera only the same element is the camera's box: no ring, no radius, the picture covering the box, not moved by hand. The player itself is laid out by the layout's geometry with CSS alone: the frame takes the layout's shape, the screen's picture moves into its box with `object-view-box` over the layout's background (black, or the padded colour), and the native controls stay on the 3.5rem strip under the picture, without Chrome's dark scrim behind them (it would only shade the picture and the colour above the strip). There the player's picture sits at the top and its native controls on a 3.5rem strip below, so the bubble never covers them; the native full screen and picture in picture are off, and Chrome's greyed full screen button is hidden. While a render or upload runs, and once the link is made, the bubble, the size strip and the trim go inert (the strip and the trim at 45%; the bubble keeps full strength so the preview still matches the video), and the note says why ("The clip and bubble hold still while the video renders.", "The link keeps this clip and this bubble place. Record another to change them."; in other layouts the same with "layout", and no note at rest). Step 1's size strip is hidden while the edit step has a camera. The render's progress bar carries its percent beside it, 700 tabular.
 
 ### Countdown Flap
 One split-flap digit over the frame on a 60% black scrim. The flap is a black square 1.3em on a side at `min(36cqh, 20cqw)`, 700, white, with a 4px horizontal gap through the middle; the top half flips out over 200ms with a dimming filter and the bottom half flips in on the standard ease.
@@ -344,7 +357,7 @@ A black Live band in miniature that floats over other apps while recording (a Do
 A 48px tall strip: a 14px track in black at 22% with the kept range in solid black. Two 18px wide, 48px tall black handles with a 2px by 22px white tick; hover goes Panel Frame, focus adds the selection ring in the focus colour. Readouts below are 500 at 1.2rem, outputs bold, tabular. A cut is the track knocked out to the surface colour and struck through by a 2px foreground rule between 2px end ticks (a struck rule means removed); a 2px by 30px foreground tick marks where a cut being marked starts. The cut list below is one row per cut: name 500, times 700 tabular, length in the secondary tone, and a quiet Remove square at the row's end.
 
 ### Register (Library)
-A fixed-layout table on black: 500 Smoke headings at 1rem with a 2px Rule Dark bottom, cells at 1.2rem with 1px Rule Dark rows, hover rows in Panel Frame. Thumbnails are 160px 16:9 Panel Frame plates (120px, then 112px as the viewport narrows). Titles are 500 and ellipsise; runtime is 700 tabular; size and date tabular, date in Ash. A recording whose originals are kept carries "Originals kept" hanging under its size, Small, in Ash (a note, not a badge), so the size stays on the row's text line. Loading shows three ghost rows drawn in Panel Frame, not a spinner. The empty state is a 40rem column: Headline title, 1.2rem Ash text, then a primary action.
+A fixed-layout table on black: 500 Smoke headings at 1rem with a 2px Rule Dark bottom, cells at 1.2rem with 1px Rule Dark rows, hover rows in Panel Frame. Thumbnails are 160px 16:9 Panel Frame plates (120px, then 112px as the viewport narrows). Titles are 500 and ellipsise; runtime is 700 tabular; size and date tabular, date in Ash. A recording whose originals are kept carries "Originals kept" hanging under its size, Small, in Ash (a note, not a badge), so the size stays on the row's text line, and a fourth register square, Change layout (the Split layout glyph), between Open and Delete; it links to the recorder's again mode. While a new version uploads the status reads "Rendering again", the link and Copy stay (the old version still plays) and Change layout goes. The action column is 14.5rem for the four squares. Loading shows three ghost rows drawn in Panel Frame, not a spinner. The empty state is a 40rem column: Headline title, 1.2rem Ash text, then a primary action.
 
 ### Navigation
 A black header strip, 3.5rem minimum height, 2px Panel Frame bottom rule. The brand at the left is "Vignette" in 700 at 1.44rem, tracked -0.01em, no underline. The one link at the right ("Library") is a glyph plus a word at 500, 1.2rem, 44px tall, underlining in cream on hover. The share page shows the brand alone. No menu, no tabs.

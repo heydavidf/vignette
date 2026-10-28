@@ -1,6 +1,6 @@
 # Vignette
 
-Vignette is an open-source screen recorder that runs entirely in the browser. Open a web page, record your screen (with an optional webcam bubble and microphone), trim the start and end, cut out the middle bits you do not want, put the webcam bubble where you want it, give it a title, and get a share link. It runs on your own free Cloudflare account, so your videos stay yours. Three design values guide it:
+Vignette is an open-source screen recorder that runs entirely in the browser. Open a web page, record your screen (with an optional webcam bubble and microphone), trim the start and end, cut out the middle bits you do not want, choose how the screen and the webcam are laid out, give it a title, and get a share link. It runs on your own free Cloudflare account, so your videos stay yours. Three design values guide it:
 
 1. **Small.** No framework, no bundler, no build step. A curious developer can read all of it in an afternoon.
 2. **Nothing to install, nothing to sign up for** for the person recording, beyond the password of your own Vignette.
@@ -101,10 +101,10 @@ To change the code rather than install it, `AGENTS.md` has the file map, the che
 1. Open your Vignette address in Chrome or Edge and enter your password.
 2. Leave **Webcam bubble** and **Microphone** ticked (or untick them), then click **Share screen** and pick a tab, window or your whole screen. Chrome asks for permission each time.
 3. Click **Start recording**. After a 3-2-1 countdown, it records. Click **Stop** when you are done. Clicking "Stop sharing" in Chrome's bar also stops the recording.
-4. Trim the start and end with the sliders, or play to a moment and click **Set start here** / **Set end here**. To take out a stretch from the middle, play or pause where it starts and click **Cut from here**, then move to where it ends and click **Cut to here**. Cuts show struck through on the bar, the preview skips them, and **Remove** puts one back. If the webcam was on, its bubble plays over the preview: drag it (or select it and use the arrow keys) and pick its size under the player. **Full screen** there shows the picture with the bubble, as the video will. Where you leave the bubble is where it is in the video; dragging it while recording only sets where it starts. Once uploaded, the clip and the bubble are fixed: the link keeps them. Change the title if you like, and click **Use current frame** to pick the thumbnail.
+4. Trim the start and end with the sliders, or play to a moment and click **Set start here** / **Set end here**. To take out a stretch from the middle, play or pause where it starts and click **Cut from here**, then move to where it ends and click **Cut to here**. Cuts show struck through on the bar, the preview skips them, and **Remove** puts one back. Under the player, **Layout** sets how the video is composed, and the preview shows it at once: **Bubble** (the webcam in a bubble over the screen), **Split** (the screen on the left, the camera in a column on the right), **Camera only**, **Screen only**, or **Padded** (the screen a little smaller, centred on a plain colour: cream, black, grey or vermilion). With the webcam off, Screen only and Padded are offered. For Bubble, drag the bubble (or select it and use the arrow keys) and pick its size and its **Shape**, round or square; where you leave it is where it is in the video (dragging it while recording only sets where it starts). **Full screen** shows the picture as the video will. Once uploaded, the clip and the layout are fixed for that upload: the link keeps them. Change the title if you like, and click **Use current frame** to pick the thumbnail; it follows the layout.
 5. Click **Upload and get link**. When it finishes, click **Copy** and paste the link anywhere. **Download MP4** saves the edited file to your computer at any time, upload or not. With the webcam on, the originals (the screen and the camera as recorded, before the bubble was drawn in) are uploaded after the link is ready and kept with the video, so a later version can lay them out again; the library marks those recordings "Originals kept". Keep the tab open until it says so.
 
-Your recordings are listed at `/library`, where you can copy links, open or delete them.
+Your recordings are listed at `/library`, where you can copy links, open or delete them. A recording whose originals are kept has a **Change layout** square: it opens the recorder with the originals already loaded into the edit step, where you pick another layout (and trim again if you like) and upload. The link stays the same and keeps playing the old version until the new one is up; then it plays the new one.
 
 ### While you record
 
@@ -117,7 +117,9 @@ Clicking **Start recording** opens a small floating window that stays on top of 
 - **Permission prompt every time.** Browsers ask before each screen share. That is a browser rule, not a Vignette choice.
 - **1080p at 30 frames per second is the ceiling.** Bigger screens are scaled down to fit.
 - **Cuts re-encode the video.** Trimming the ends copies the recording as it is (Mediabunny re-encodes only when a trim point does not fall on a keyframe). Cutting out the middle makes the browser encode the video again (H.264 at 5 Mbps), which takes a moment and needs memory for both copies. Each join can carry up to about 20 ms of extra sound. No zoom effects or captions yet (see `docs/BACKLOG.md`).
-- **With the webcam on, every export renders.** The screen and the camera are recorded as two files and the bubble is drawn in when you download or upload: the browser decodes both and encodes the video again (H.264 at 5 Mbps). On an Apple M1 Max this ran at 7.2 seconds of video per second (Chrome's test build, a 60 second recording of a simple test picture) for a 1080p screen with a 720p camera, so a one minute recording takes about 8 seconds to export. Without the webcam a trim still copies.
+- **Every layout but Screen only renders.** The screen and the camera are recorded as two files and laid out when you download or upload: the browser decodes them and encodes the video again (H.264 at 5 Mbps). On an Apple M1 Max, with Chromium drawing on the GPU as Chrome does, a 20 second 1080p recording with a 720p camera rendered at about 9 to 10 seconds of video per second as Bubble or Split, 13 as Camera only and 6 to 10 as Padded (an earlier 60 second Bubble run gave 7.2), so a one minute recording takes 5 to 10 seconds to export. Screen only with a trim copies the recording as it is, as without the webcam.
+- **One layout per recording.** The whole video uses the layout you pick; changing layout part way through is not possible yet. **Change layout** in the library needs the originals, so it is offered only for recordings made with the webcam on whose originals were kept.
+- **The layout preview is Chrome and Edge only.** It moves the screen's picture with CSS (`object-view-box`) that other browsers do not have yet; there the preview shows the screen full size, while the video itself is laid out correctly.
 - **With the webcam on, the originals are kept too.** Each recording then stores the rendered video plus the screen and camera as recorded, roughly twice the space. The originals are the whole recording: whatever you trimmed or cut out of the video is still in them. Only you (with the owner password) can fetch them, and deleting the video deletes them.
 - **One owner.** A single password protects recording and the library. There are no accounts.
 - **Links are unlisted, not private.** Anyone who has a link can watch and download that video. Links are random and cannot be guessed, but they can be forwarded.
@@ -151,14 +153,16 @@ Where things live:
 
 - `wrangler.toml`: Cloudflare config (static files, R2 bucket `MEDIA`, D1 database `DB`, upload size limit, and a rule that lets the Worker import `icons.svg` as text).
 - `schema.sql`: the one database table, for new installs. `migrations/` and `scripts/migrate.mjs`: the update for databases made by an older version (`npm run db:migrate`).
-- `worker/index.js`: the server. Owner API (including the originals), media streaming with Range support. `worker/share-page.js`: the share page (styled by `public/share.css`).
+- `worker/index.js`: the server. Owner API (including the originals and rendering a recording again). `worker/media.js`: media streaming with Range support. `worker/share-page.js`: the share page (styled by `public/share.css`). `worker/http.js`: JSON responses and errors.
 - `public/index.html`: the recorder page (record, edit, upload).
 - `public/recorder.js`: screen, webcam and mic capture, the live preview, the steps' state.
 - `public/tracks.js`: the two recorders (screen with the sound, camera alone) and keeping the camera in step with the screen in the edit preview.
-- `public/bubble.js`: the webcam bubble you drag over the live preview and over the edit step's player; one stored place for both.
+- `public/bubble.js`: the webcam bubble you drag over the live preview and over the edit step's player; one stored place, size and shape for both.
+- `public/layouts.js`: the five layouts and their geometry, shared by the render, the thumbnail and the preview. `public/layout-tools.js`: the edit step's Layout strip, colour swatches and live preview.
+- `public/again.js`: Change layout from the library: loading a recording's originals back into the edit step.
 - `public/selfview.js`, `public/selfview.css`: the floating window shown while recording (picture, time, Stop, view toggle) and its picture-in-picture stand-in. `public/prompter.js`: the script toggle and the window's scrolling script panel.
 - `public/editor.js`: the edit and upload steps. `public/media.js`: re-packaging, trimming, probing and thumbnails with Mediabunny.
-- `public/render.js`: the export with the webcam on: the screen and the camera decoded side by side and the bubble drawn into every frame.
+- `public/render.js`: the export in a layout: the screen and the camera decoded side by side and drawn into every frame, and the thumbnail drawn the same way.
 - `public/cuts.js`: mid-section cuts: the cut controls, cut skipping in the preview, and the re-encode that removes them.
 - `public/upload.js`: the chunked upload client with retries, for the video and the originals.
 - `public/auth.js`: the owner password form and API calls.
@@ -168,8 +172,8 @@ Where things live:
 - `public/icons.svg`: the pictograms, one SVG sprite.
 - `public/vendor/fonts/`: Fira Sans (SIL Open Font License, licence file beside the fonts), served from this site.
 - `public/vendor/mediabunny-1.61.6.min.mjs`: the media library, vendored unmodified.
-- `test/e2e.mjs`: the Playwright end-to-end test. `test/cuts-step.mjs`, `test/cuts-scenario.mjs`, `test/tracks-step.mjs`, `test/tracks-scenario.mjs` and `test/migrate-step.mjs` are steps it runs.
-- `docs/MVP_SPEC.md`: what v0.1 is. `docs/CUTS_SPEC.md` and `docs/LOOP1_TWO_TRACKS_SPEC.md`: what was added since. `docs/BACKLOG.md`: what it is not, yet.
+- `test/e2e.mjs`: the Playwright end-to-end test; `test/harness.mjs` starts its servers and holds its shared helpers. The `test/*-step.mjs` and `test/*-scenario.mjs` files are the steps it runs.
+- `docs/MVP_SPEC.md`: what v0.1 is. `docs/CUTS_SPEC.md`, `docs/LOOP1_TWO_TRACKS_SPEC.md`, `docs/LOOP2_SELF_VIEW_SPEC.md` and `docs/LOOP3_LAYOUTS_SPEC.md`: what was added since. `docs/BACKLOG.md`: what it is not, yet.
 - `spike/`: the original proof of concept, kept for reference and not served.
 
 ## Licence

@@ -7,16 +7,20 @@
 // video shows the bubble exactly where it was left.
 //
 // Position is the bubble's centre as a share of the frame, 0 to 1 on each
-// axis. Size is the radius as a share of the frame's shorter edge.
+// axis. Size is the radius as a share of the frame's shorter edge. Shape is
+// round, or square with corners rounded at 8% of the diameter (the same
+// size and ring); a stored place from before shapes existed is round.
 
 const KEY = 'vignette.bubble';
 export const SIZES = { small: 0.10, medium: 0.14, large: 0.20 };
+export const SHAPES = ['round', 'square'];
 const RING = 0.03;     // black ring, as a share of the diameter (matches app.css)
+const CORNER = 0.08;   // a square bubble's corner radius, as a share of the diameter (matches app.css)
 const MARGIN = 0.025;  // gap kept from the frame edge, as a share of the shorter edge
 const STEP = 0.02;     // arrow key nudge; Shift moves five times as far
 
 let shape = { w: 16, h: 9 };              // the frame a set() without one clamps to: the view shaped last
-let pos = clamp({ x: 0, y: 1, size: 'medium' }, shape.w, shape.h); // bottom left, medium
+let pos = clamp({ x: 0, y: 1, size: 'medium', shape: 'round' }, shape.w, shape.h); // bottom left, medium, round
 const views = [];
 const listeners = [];
 export let lastDraw = null;               // what the live compositor last drew, for the test
@@ -26,7 +30,7 @@ function clamp(p, w, h) {
   const short = Math.min(w, h);
   const keep = (SIZES[p.size] + MARGIN) * short;
   const fit = (v, len) => Math.min(Math.max(v * len, keep), len - keep) / len;
-  return { x: fit(p.x, w), y: fit(p.y, h), size: p.size };
+  return { x: fit(p.x, w), y: fit(p.y, h), size: p.size, shape: p.shape };
 }
 
 // Centre and radius in pixels of a bubble at p on a frame W by H.
@@ -38,16 +42,17 @@ export const place = (W, H) => placeOn(pos, W, H);
 
 export function get() { return { ...pos }; }
 
-// Runs fn() after every change of place or size (the edit step refreshes its thumbnail).
+// Runs fn() after every change of place, size or shape (the edit step refreshes its thumbnail).
 export function onChange(fn) { listeners.push(fn); }
 
-// Accepts any of {x, y, size}; ignores values that do not make sense.
+// Accepts any of {x, y, size, shape}; ignores values that do not make sense.
 // The new place is kept inside a frame w by h (the frame being dragged on).
 export function set(next = {}, { save = true, w = shape.w, h = shape.h } = {}) {
   const p = { ...pos };
   if (Number.isFinite(next.x)) p.x = next.x;
   if (Number.isFinite(next.y)) p.y = next.y;
   if (next.size in SIZES) p.size = next.size;
+  if (SHAPES.includes(next.shape)) p.shape = next.shape;
   pos = clamp(p, w, h);
   views.forEach(render);
   if (save) store();
@@ -66,20 +71,34 @@ function load() {
   } catch { /* storage blocked or unreadable: use the default */ }
 }
 
+// The outline of a bubble centred at cx, cy, `half` across from the centre
+// to the edge: a circle, or a square whose corners are rounded by `corner`.
+function outline(ctx, cx, cy, half, square, corner) {
+  ctx.beginPath();
+  if (!square) { ctx.arc(cx, cy, half, 0, Math.PI * 2); return; }
+  const l = cx - half, t = cy - half, r = cx + half, b = cy + half;
+  ctx.moveTo(l + corner, t);
+  ctx.arcTo(r, t, r, b, corner); ctx.arcTo(r, b, l, b, corner);
+  ctx.arcTo(l, b, l, t, corner); ctx.arcTo(l, t, r, t, corner);
+  ctx.closePath();
+}
+
 // Paints a bubble at p onto a canvas W by H: a black ring, then the camera
-// picture centre-cropped to a circle inside it. The picture is srcW by srcH;
+// picture centre-cropped to the shape inside it. The picture is srcW by srcH;
 // drawSource(sx, sy, sw, sh, dx, dy, dw, dh) draws part of it, as drawImage
 // does. Returns where it went, as shares of the frame.
 export function paint(ctx, p, W, H, srcW, srcH, drawSource) {
   const { cx, cy, r } = placeOn(p, W, H);
-  const inner = r * (1 - 2 * RING);
+  const square = p.shape === 'square';
+  const ring = 2 * r * RING, inner = r - ring;
+  const corner = 2 * r * CORNER; // the inner corner keeps the ring's width all the way round
   const side = Math.min(srcW, srcH);
   ctx.save();
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fillStyle = '#0B0B0B'; ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, cy, inner, 0, Math.PI * 2); ctx.clip();
+  outline(ctx, cx, cy, r, square, corner); ctx.fillStyle = '#0B0B0B'; ctx.fill();
+  outline(ctx, cx, cy, inner, square, corner - ring); ctx.clip();
   drawSource((srcW - side) / 2, (srcH - side) / 2, side, side, cx - inner, cy - inner, inner * 2, inner * 2);
   ctx.restore();
-  return { x: cx / W, y: cy / H, size: p.size };
+  return { x: cx / W, y: cy / H, size: p.size, shape: square ? 'square' : 'round' };
 }
 
 // The live preview: the bubble where it sits right now, from a <video>.
@@ -95,7 +114,9 @@ function render(v) {
   v.el.style.setProperty('--bx', p.x.toFixed(5));
   v.el.style.setProperty('--by', p.y.toFixed(5));
   v.el.style.setProperty('--bd', d.toFixed(5));
+  v.el.dataset.shape = p.shape;
   for (const r of v.sizes) r.checked = r.value === p.size;
+  for (const r of v.shapes) r.checked = r.value === p.shape;
 }
 
 // Moving it: pointer (mouse, pen, touch) and keyboard.
@@ -131,14 +152,16 @@ function onKey(v, e) {
 }
 
 // el: the bubble; video: the <video> inside it; frame: the element the
-// bubble moves over (exactly the picture); sizes: Small, Medium, Large radios.
+// bubble moves over (exactly the picture); sizes: Small, Medium, Large radios;
+// shapes: Round and Square radios, where the view offers them.
 // Returns the view's controls.
-export function attach({ el, video, frame, sizes }) {
-  const v = { el, video, frame, sizes: [...sizes], w: 16, h: 9 };
+export function attach({ el, video, frame, sizes, shapes = [] }) {
+  const v = { el, video, frame, sizes: [...sizes], shapes: [...shapes], w: 16, h: 9 };
   views.push(v);
   el.addEventListener('pointerdown', (e) => onPointerDown(v, e));
   el.addEventListener('keydown', (e) => onKey(v, e));
   for (const r of v.sizes) r.addEventListener('change', () => { if (r.checked) set({ size: r.value }, { w: v.w, h: v.h }); });
+  for (const r of v.shapes) r.addEventListener('change', () => { if (r.checked) set({ shape: r.value }, { w: v.w, h: v.h }); });
   render(v);
   return {
     // The picture changed shape (a new share, a recording opened, or back

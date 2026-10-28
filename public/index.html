@@ -123,9 +123,11 @@
             <div id="editBody" class="editor" hidden>
               <div class="editor-main">
                 <div class="player on-grey">
-                  <!-- With a camera, the bubble moves on #clipFrame, which covers exactly the picture; the player's controls sit on a strip below it.
-                       Full screen takes #clip (picture and bubble together); the video's own full screen and picture in picture are off then. -->
-                  <div id="clip" class="clip" data-bubble="off">
+                  <!-- The layout (layouts.js) places the two videos by CSS: the screen in #preview (its picture moved by object-view-box,
+                       its controls on a strip below the picture) and the camera in #editBubble, the bubble or the camera's box.
+                       #clipFrame covers exactly the picture. Full screen takes #clip; the video's own full screen and picture in
+                       picture are off unless the layout is Screen only. -->
+                  <div id="clip" class="clip" data-composed="off" data-layout="screen">
                     <div class="clip-box">
                       <video id="preview" controls controlslist="nodownload" playsinline preload="auto"></video>
                       <div id="clipFrame" class="clip-frame">
@@ -137,17 +139,43 @@
                     </div>
                   </div>
                 </div>
-                <div id="bubbleTools" class="bubble-tools" hidden>
-                  <div class="bubble-row">
-                  <div id="bubbleSet" class="bubble-set">
-                  <span id="editSizeLabel" class="tools-label">Bubble size</span>
-                  <fieldset class="sizes" aria-labelledby="editSizeLabel">
-                    <label class="seg" title="Small"><input type="radio" name="editBubbleSize" value="small"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-s"/></svg><span class="vh">Small</span></label>
-                    <label class="seg" title="Medium"><input type="radio" name="editBubbleSize" value="medium"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-m"/></svg><span class="vh">Medium</span></label>
-                    <label class="seg" title="Large"><input type="radio" name="editBubbleSize" value="large"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-l"/></svg><span class="vh">Large</span></label>
-                  </fieldset>
+                <div id="layoutTools" class="edit-tools">
+                  <div class="tools-row">
+                    <div id="layoutSet" class="tools-set">
+                      <span id="layoutLabel" class="tools-label">Layout</span>
+                      <fieldset class="sizes" aria-labelledby="layoutLabel">
+                        <label class="seg" title="Bubble"><input type="radio" name="layout" value="bubble"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-bubble"/></svg><span class="vh">Bubble</span></label>
+                        <label class="seg" title="Split"><input type="radio" name="layout" value="split"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-split"/></svg><span class="vh">Split</span></label>
+                        <label class="seg" title="Camera only"><input type="radio" name="layout" value="camera"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-camera"/></svg><span class="vh">Camera only</span></label>
+                        <label class="seg" title="Screen only"><input type="radio" name="layout" value="screen"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-screen"/></svg><span class="vh">Screen only</span></label>
+                        <label class="seg" title="Padded"><input type="radio" name="layout" value="padded"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-padded"/></svg><span class="vh">Padded</span></label>
+                      </fieldset>
+                    </div>
+                    <button id="fullView" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-full"/></svg></span><span class="act-label">Full screen</span></button>
                   </div>
-                  <button id="fullView" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-full"/></svg></span><span class="act-label">Full screen</span></button>
+                  <div id="colourSet" class="tools-set" hidden>
+                    <span id="colourLabel" class="tools-label">Colour</span>
+                    <fieldset class="swatches" aria-labelledby="colourLabel">
+                      <label class="swatch" data-colour="cream" title="Cream"><input type="radio" name="padColour" value="cream"><span class="vh">Cream</span></label>
+                      <label class="swatch" data-colour="black" title="Black"><input type="radio" name="padColour" value="black"><span class="vh">Black</span></label>
+                      <label class="swatch" data-colour="grey" title="Grey"><input type="radio" name="padColour" value="grey"><span class="vh">Grey</span></label>
+                      <label class="swatch" data-colour="vermilion" title="Vermilion"><input type="radio" name="padColour" value="vermilion"><span class="vh">Vermilion</span></label>
+                    </fieldset>
+                  </div>
+                  <div id="bubbleTools" class="tools-row" hidden>
+                    <div id="bubbleSet" class="tools-set">
+                      <span id="editSizeLabel" class="tools-label">Bubble size</span>
+                      <fieldset class="sizes" aria-labelledby="editSizeLabel">
+                        <label class="seg" title="Small"><input type="radio" name="editBubbleSize" value="small"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-s"/></svg><span class="vh">Small</span></label>
+                        <label class="seg" title="Medium"><input type="radio" name="editBubbleSize" value="medium"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-m"/></svg><span class="vh">Medium</span></label>
+                        <label class="seg" title="Large"><input type="radio" name="editBubbleSize" value="large"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-l"/></svg><span class="vh">Large</span></label>
+                      </fieldset>
+                      <span id="shapeLabel" class="tools-label">Shape</span>
+                      <fieldset class="sizes" aria-labelledby="shapeLabel">
+                        <label class="seg" title="Round"><input type="radio" name="editBubbleShape" value="round"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-shape-round"/></svg><span class="vh">Round</span></label>
+                        <label class="seg" title="Square"><input type="radio" name="editBubbleShape" value="square"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-shape-square"/></svg><span class="vh">Square</span></label>
+                      </fieldset>
+                    </div>
                   </div>
                   <p id="editBubbleHelp" class="bubble-note">Drag the bubble, or select it and use the arrow keys, to place your webcam. The video shows it where you leave it.</p>
                 </div>
@@ -186,7 +214,7 @@
                 </div>
                 <div id="uploadStep" class="upload" hidden>
                   <div id="uploadActs" class="upload-acts">
-                    <button id="upload" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Upload and get link</span></button>
+                    <button id="upload" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span id="uploadLabel" class="act-label">Upload and get link</span></button>
                     <button id="download" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-download"/></svg></span><span class="act-label">Download MP4</span></button>
                     <a id="downloadLink" hidden download="vignette.mp4">Download</a>
                   </div>

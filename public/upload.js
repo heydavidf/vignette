@@ -6,6 +6,11 @@
 // its completion makes the link work; the originals follow, through the
 // same single-shot-or-multipart requests with ?track=screen or ?track=camera.
 //
+// Rendered again (from the library): the video replaces the recording's own
+// under the same link. POST /api/videos/:id/again opens it instead of a new
+// row; the bytes, completion and thumbnail then go through the same requests,
+// and the originals are not sent again.
+//
 // Pass the same `job` object again after a failure and the upload resumes:
 // steps and parts that already succeeded are skipped, so a retry only
 // re-sends what failed.
@@ -78,28 +83,35 @@ async function sendFile({ base, track, blob, file, partSize, password, onProgres
  * @param {number} [o.height]
  * @param {Blob} [o.thumb]     JPEG thumbnail, optional
  * @param {number|null} [o.cameraOffset]  seconds the camera started after the screen
- * @param {object|null} [o.bubble]        {x, y, size} the video was rendered with
+ * @param {object|null} [o.bubble]        {x, y, size, shape}: the bubble's place, with a camera
+ * @param {string} [o.layout]             the layout it was rendered in ('bubble', 'split', 'camera', 'screen', 'padded:<colour>')
+ * @param {string|null} [o.again]         an uploaded recording's id: replace its video instead of making a new one
  * @param {{screen: Blob, camera: Blob}|null} [o.raw]  the originals, declared now, sent later
  * @param {string} [o.password]
  * @param {(sent: number, total: number) => void} [o.onProgress]
  * @param {object} [o.job]     progress record; reuse it to retry
  */
 export async function uploadVideo({
-  blob, title, duration, width, height, thumb, cameraOffset = null, bubble = null, raw = null,
+  blob, title, duration, width, height, thumb, cameraOffset = null, bubble = null, layout = 'bubble', again = null, raw = null,
   password = getPassword(), onProgress = () => {}, job = {},
 }) {
   const total = blob.size;
   if (job.id && job.size !== total) throw new Error('This retry belongs to a different file. Start a new upload.');
 
-  // 1. Create the video record (and the multipart uploads, for big files).
+  // 1. Create the video record (and the multipart uploads, for big files), or
+  // open the new version of an uploaded one. The nonce lets a Retry after a
+  // lost response carry on with the version it opened.
   if (!job.id) {
-    const created = await api('/api/videos', {
-      method: 'POST', password,
-      body: {
-        title, duration, size: total, mime: 'video/mp4', width, height, cameraOffset, bubble, layout: 'bubble',
-        raw: raw ? { screen: raw.screen.size, camera: raw.camera.size } : null,
-      },
-    });
+    job.nonce ||= Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('');
+    const created = again
+      ? await api(`/api/videos/${again}/again`, { method: 'POST', password, body: { title, duration, size: total, width, height, layout, bubble, nonce: job.nonce } })
+      : await api('/api/videos', {
+        method: 'POST', password,
+        body: {
+          title, duration, size: total, mime: 'video/mp4', width, height, cameraOffset, bubble, layout,
+          raw: raw ? { screen: raw.screen.size, camera: raw.camera.size } : null,
+        },
+      });
     const fresh = (multipart) => ({ multipart, parts: {}, uploaded: false, completed: false });
     Object.assign(job, {
       id: created.id, size: total, partSize: created.partSize, ...fresh(created.multipart), thumbDone: false,

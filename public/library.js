@@ -1,4 +1,6 @@
-// Library page: the owner's register of recordings, with copy, open and delete.
+// Library page: the owner's register of recordings, with copy, open, change
+// layout (for recordings whose originals are kept: the recorder renders them
+// again, /?again=<id>) and delete.
 import { api, requirePassword, showGateAgain } from './auth.js';
 import { say, icon } from './ui.js';
 
@@ -63,16 +65,19 @@ function updateCount() {
 
 function row(v) {
   const ready = v.status === 'ready';
+  const live = ready || !!v.again; // rendered again, the link plays the current version until the new one is up
   const plate = el('span', { className: 'reg-img' });
-  const thumb = el('img', { src: `/thumb/${v.id}`, alt: '', loading: 'lazy', width: 160, height: 90 });
+  // The version (the file's size) in the address: a recording rendered again shows its new thumbnail, not a cached one.
+  const thumb = el('img', { src: `/thumb/${v.id}?v=${Number(v.size).toString(36)}`, alt: '', loading: 'lazy', width: 160, height: 90 });
   thumb.addEventListener('error', () => { thumb.remove(); plate.append(icon('frame')); });
   plate.append(thumb);
-  const title = ready ? el('a', { href: `/v/${v.id}`, textContent: v.title, title: v.title }) : el('span', { textContent: v.title, title: v.title });
+  const title = live ? el('a', { href: `/v/${v.id}`, textContent: v.title, title: v.title }) : el('span', { textContent: v.title, title: v.title });
+  const state = ready ? 'Ready' : (v.again ? 'Rendering again' : 'Uploading');
 
   const actions = el('div', { className: 'reg-acts' });
   const showActions = () => {
     actions.replaceChildren();
-    if (ready) {
+    if (live) {
       const copy = square('copy', 'Copy link');
       copy.addEventListener('click', async () => {
         try {
@@ -86,6 +91,8 @@ function row(v) {
       });
       actions.append(copy, square('arrow-out', 'Open', 'a', { href: `/v/${v.id}`, target: '_blank', rel: 'noopener' }));
     }
+    // Rendering it again needs the screen and camera as recorded.
+    if (ready && v.has_raw) actions.append(square('lay-split', 'Change layout', 'a', { href: `/?again=${v.id}` }));
     const del = square('trash', 'Delete');
     del.addEventListener('click', confirmDelete);
     actions.append(del);
@@ -117,12 +124,13 @@ function row(v) {
   const created = new Date(v.created_at);
   const tr = el('tr', { dataset: { id: v.id } },
     el('td', { className: 'reg-thumb' }, plate),
-    el('td', { className: 'reg-title' }, title),
+    // Where the status column is hidden, a row that is not ready says so under its title.
+    el('td', { className: 'reg-title' }, title, ready ? null : el('span', { className: 'reg-state', textContent: state })),
     el('td', { className: 'reg-run r' }, fmtDuration(v.duration)),
     // "Originals kept": the screen and camera as recorded are stored too (see README).
     el('td', { className: 'reg-size r' }, el('span', { className: 'reg-sz' }, fmtSize(v.size), v.has_raw ? el('span', { className: 'reg-raw', textContent: 'Originals kept' }) : null)),
     el('td', { className: 'reg-date' }, el('time', { dateTime: created.toISOString(), textContent: fmtDate(v.created_at) })),
-    el('td', { className: 'reg-status' }, el('span', { className: `status ${v.status}`, textContent: ready ? 'Ready' : 'Uploading' })),
+    el('td', { className: 'reg-status' }, el('span', { className: `status ${v.status}`, textContent: state })),
     el('td', { className: 'reg-actions' }, actions),
   );
   return tr;

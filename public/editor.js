@@ -1,15 +1,20 @@
 // Edit and upload (steps 3 and 4). The Mediabunny helpers live in media.js,
-// cuts in cuts.js, the two-track render in render.js. With a camera track,
-// the edit step plays the screen and the camera side by side, the bubble is
-// placed here (bubble.js), and every export renders it in.
+// cuts in cuts.js, the layouts in layouts.js and layout-tools.js, the render
+// in render.js. With a camera track, the edit step plays the screen and the
+// camera side by side; the layout is chosen here, and so is the bubble's
+// place (bubble.js). Every layout but Screen only renders at export; Screen
+// only keeps the trim's copy path. An uploaded recording can come back here
+// from the library to be rendered again (again mode): its upload replaces
+// the video under the same link.
 import { uploadVideo, uploadOriginals } from './upload.js';
 import { showGateAgain } from './auth.js';
 import { say, busy, fmtTime } from './ui.js';
 import { initCuts, keptRanges, totalLength } from './cuts.js';
 import { repackage, probe, exportClip, grabFrame } from './media.js';
-import { renderComposite, grabComposite } from './render.js';
+import { renderLayout, grabLayout } from './render.js';
 import * as bubble from './bubble.js';
 import { followScreen, heap } from './tracks.js';
+import { attachLayoutTools } from './layout-tools.js';
 
 const MIN_CLIP = 0.5; // seconds; the trim handles never get closer than this
 const $ = (id) => document.getElementById(id);
@@ -17,6 +22,7 @@ const ui = {
   gate: $('gate'), share: $('share'), editStep: $('editStep'), editMsg: $('editMsg'), editBody: $('editBody'), preview: $('preview'),
   clip: $('clip'), clipFrame: $('clipFrame'), editBubble: $('editBubble'), camPreview: $('camPreview'), bubbleTools: $('bubbleTools'),
   bubbleSet: $('bubbleSet'), bubbleNote: $('editBubbleHelp'), fullView: $('fullView'), stepSizes: $('sizes'), trimBox: $('trim'), trim: $('trim').querySelector('.trim-bar'),
+  layoutSet: $('layoutSet'), colourSet: $('colourSet'), uploadLabel: $('uploadLabel'),
   trimStart: $('trimStart'), trimEnd: $('trimEnd'), trimStartOut: $('trimStartOut'), trimEndOut: $('trimEndOut'),
   trimLength: $('trimLength'), setStart: $('setStart'), setEnd: $('setEnd'), title: $('title'),
   cutMarks: $('cutMarks'), cutFrom: $('cutFrom'), cutTo: $('cutTo'), cutMsg: $('cutMsg'), cutList: $('cutList'),
@@ -31,12 +37,13 @@ const ui = {
 export const editorState = {
   video: null,      // the screen, re-packaged: {blob, duration, width, height, videoCodec, audioCodec}
   camera: null,     // the camera, re-packaged, or null: {blob, duration, width, height, offset, lostAt, ...}
-  exported: null,   // MP4 for the current handles, cuts and bubble: {key, blob, duration, width, height, bubble}
+  exported: null,   // MP4 for the current handles, cuts and layout: {key, blob, duration, width, height, bubble, layout}
   failed: null,     // the export whose re-encode or render failed; it falls back until something changes
   thumb: null,      // {blob, time, chosen, look}
   job: null,        // upload progress record, reused by both Retry buttons
   keeping: false,   // the originals are being uploaded
-  linked: false,    // uploaded: the link keeps this clip and bubble, so they stop changing
+  linked: false,    // uploaded: the link keeps this clip and layout, so they stop changing
+  again: null,      // rendering an uploaded recording again: its id (the upload replaces its video), or null
   unfollow: null,   // unhooks the camera preview from the screen preview
   note: () => {},
   urls: [],         // object URLs to release when the recording is discarded
@@ -51,14 +58,24 @@ const plateGlyph = ui.thumbPlate.firstElementChild;
 const fmtMB = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 function objectUrl(blob) { const u = URL.createObjectURL(blob); S.urls.push(u); return u; }
 
-// The bubble over the player: the same stored place as the recorder's.
-const editView = bubble.attach({ el: ui.editBubble, video: ui.camPreview, frame: ui.clipFrame, sizes: document.querySelectorAll('input[name=editBubbleSize]') });
+// The bubble over the player: the same stored place as the recorder's, plus its shape.
+const editView = bubble.attach({
+  el: ui.editBubble, video: ui.camPreview, frame: ui.clipFrame,
+  sizes: document.querySelectorAll('input[name=editBubbleSize]'), shapes: document.querySelectorAll('input[name=editBubbleShape]'),
+});
 editView.setCam(true);
+// The Layout strip, the padded colour and the preview of both.
+export const layout = attachLayoutTools({
+  clip: ui.clip, preview: ui.preview, editBubble: ui.editBubble, bubbleTools: ui.bubbleTools, colourSet: ui.colourSet, fullView: ui.fullView,
+  layouts: document.querySelectorAll('input[name=layout]'), colours: document.querySelectorAll('input[name=padColour]'),
+});
+const UPLOAD_LABEL = ui.uploadLabel.textContent;
 
 export function closeEditor() {
   S.unfollow?.();
   S.urls.forEach((u) => URL.revokeObjectURL(u));
-  Object.assign(S, { video: null, camera: null, exported: null, failed: null, thumb: null, job: null, linked: false, unfollow: null, urls: [] });
+  Object.assign(S, { video: null, camera: null, exported: null, failed: null, thumb: null, job: null, linked: false, again: null, unfollow: null, urls: [] });
+  ui.uploadLabel.textContent = UPLOAD_LABEL;
   cutEd.reset();
   ui.stepSizes.hidden = false; // step 1's size strip is for the next recording again
   ui.preview.removeAttribute('src');
@@ -68,15 +85,20 @@ export function closeEditor() {
 }
 
 // rec: what tracks.js recorded: {screen, camera, cameraOffset, cameraLostAt}.
-export async function openEditor(rec, note) {
+// again: an uploaded recording to render again ({id, title, layout, colour,
+// bubble}), whose originals are rec; they were re-packaged before they were
+// kept, so they are only measured here.
+export async function openEditor(rec, note, again = null) {
   closeEditor();
   S.note = note;
+  S.again = again?.id || null;
   ui.editStep.hidden = false;
   ui.editBody.hidden = true;
-  say(ui.editMsg, 'Preparing your recording...', 'note');
+  say(ui.editMsg, again ? 'Preparing the originals...' : 'Preparing your recording...', 'note');
+  const prepare = async (blob) => (again ? { blob, ...(await probe(blob)) } : repackage(blob));
   const t0 = performance.now();
   try {
-    S.video = await repackage(rec.screen);
+    S.video = await prepare(rec.screen);
   } catch (err) {
     // Keep the raw file downloadable so the recording is never lost.
     const ext = rec.screen.type.includes('mp4') ? 'mp4' : 'webm';
@@ -88,7 +110,7 @@ export async function openEditor(rec, note) {
   }
   if (rec.camera) {
     try {
-      const cam = await repackage(rec.camera);
+      const cam = await prepare(rec.camera);
       if (!cam.width) throw new Error('it has no picture');
       S.camera = { ...cam, offset: rec.cameraOffset || 0, lostAt: rec.cameraLostAt };
     } catch (err) {
@@ -100,14 +122,18 @@ export async function openEditor(rec, note) {
   note('tracks', `${videoCodec} ${width}x${height}, audio ${audioCodec || 'none'}`);
   if (S.camera) note('camera track', `${S.camera.videoCodec} ${S.camera.width}x${S.camera.height}, ${S.camera.duration.toFixed(2)} s`);
 
-  showCamera(); // sets the player's controls (no own full screen with a camera) before the source loads
-  ui.preview.src = objectUrl(S.video.blob);
+  // Where it was, as uploaded; a place stored before shapes existed is round.
+  if (again?.bubble) bubble.set({ shape: 'round', ...again.bubble }, { save: false, w: width, h: height });
+  showCamera();
+  layout.open({ width, height }, S.camera && { width: S.camera.width, height: S.camera.height }, again && { id: again.layout, colour: again.colour });
+  ui.preview.src = objectUrl(S.video.blob); // after the layout has set the player's controls
   for (const r of [ui.trimStart, ui.trimEnd]) r.max = duration;
   ui.trimStart.value = 0;
   ui.trimEnd.value = duration;
   cutEd.reset();
   const now = new Date();
-  ui.title.value = `Recording ${now.toLocaleDateString(undefined, { dateStyle: 'medium' })} ${now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+  ui.title.value = again ? again.title : `Recording ${now.toLocaleDateString(undefined, { dateStyle: 'medium' })} ${now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+  if (again) ui.uploadLabel.textContent = 'Upload and replace';
   say(ui.editMsg, '');
   ui.editBody.hidden = false;
   ui.uploadStep.hidden = false;
@@ -116,17 +142,12 @@ export async function openEditor(rec, note) {
   ui.editStep.closest('section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// With a camera: the bubble over the player, playing the camera file in step
-// with the screen, and its size strip. Without: the player alone.
-// The video's own full screen and picture in picture would show the screen
-// without the bubble, so with a camera they give way to the Full screen square.
+// With a camera: the camera file plays in the camera's place (the bubble, or
+// its box in Split and Camera only), in step with the screen; the layout
+// tools show or hide it. Without: the player alone.
 function showCamera() {
   const on = !!S.camera;
-  ui.clip.dataset.bubble = on ? 'on' : 'off';
-  ui.editBubble.hidden = ui.bubbleTools.hidden = !on;
   ui.stepSizes.hidden = on; // this recording's size is chosen here, not in step 1
-  ui.preview.disablePictureInPicture = on;
-  ui.preview.setAttribute('controlslist', on ? 'nofullscreen nodownload' : 'nodownload');
   if (!on) return;
   editView.setFrame(S.video.width, S.video.height);
   ui.camPreview.src = objectUrl(S.camera.blob);
@@ -170,9 +191,12 @@ const cutEd = initCuts({
 });
 
 // ---------- Thumbnail ----------
-// With a camera the thumbnail is the composite, so it follows the bubble.
+// The thumbnail is drawn in the layout, so it follows the layout, the colour and the bubble.
 let thumbTimer = null, thumbToken = 0;
-const look = () => (S.camera ? JSON.stringify(bubble.get()) : '');
+function look() {
+  const { id, value } = layout.get();
+  return id === 'bubble' ? `${value} ${JSON.stringify(bubble.get())}` : value;
+}
 function defaultThumbTime() {
   const { start, end } = getTrim();
   const [first = { start, end }] = keptRanges(start, end, cutEd.cuts);
@@ -187,14 +211,16 @@ function scheduleThumb() {
     setThumb(chosen ? S.thumb.time : defaultThumbTime(), chosen).catch(() => {});
   }, 300);
 }
-bubble.onChange(() => { if (S.video && S.camera) scheduleThumb(); });
+bubble.onChange(() => { if (S.video && S.camera && layout.get().id === 'bubble') scheduleThumb(); });
+layout.onChange(() => { if (S.video) scheduleThumb(); });
 
 async function setThumb(time, chosen) {
   const token = ++thumbToken; // only the newest request wins
   const seen = look();
-  const blob = S.camera
-    ? await grabComposite({ screen: S.video.blob, camera: S.camera.blob, cameraOffset: S.camera.offset, time, bubble: bubble.get() })
-    : await grabFrame(S.video.blob, time);
+  const { id, colour } = layout.get();
+  const blob = id === 'screen'
+    ? await grabFrame(S.video.blob, time)
+    : await grabLayout({ screen: S.video.blob, camera: S.camera?.blob, cameraOffset: S.camera?.offset, time, layout: id, bubble: bubble.get(), colour });
   if (token !== thumbToken || !S.video) return S.thumb?.blob;
   S.thumb = { blob, time, chosen, look: seen };
   ui.thumbImg.src = objectUrl(blob);
@@ -212,24 +238,27 @@ async function currentThumb() {
   return setThumb(time, chosen);
 }
 
-// ---------- Export (trim, cuts, bubble) ----------
-// Returns the MP4 for the current handles, cuts and bubble, reusing the last
-// export when nothing has changed. A re-encode or render shows its progress
-// under Upload. If one fails, the next export falls back to the screen with
-// the trim alone, until the cuts, the trim or the bubble change.
+// ---------- Export (trim, cuts, layout) ----------
+// Returns the MP4 for the current handles, cuts and layout, reusing the last
+// export when nothing has changed. Screen only keeps the trim's copy path
+// (cuts re-encode); every other layout renders. A re-encode or render shows
+// its progress under Upload. If one fails, the next export falls back to the
+// screen with the trim alone, until the cuts, the trim or the layout change.
 async function ensureExport() {
   const { start, end } = getTrim();
   const kept = keptRanges(start, end, cutEd.cuts);
   const keptKey = kept.map((r) => `${r.start.toFixed(3)}-${r.end.toFixed(3)}`).join(',');
+  const lay = layout.get();
   const place = S.camera ? bubble.get() : null;
-  const attempt = place ? `${keptKey} bubble ${place.x.toFixed(4)},${place.y.toFixed(4)},${place.size}` : keptKey;
+  const looks = lay.id === 'bubble' ? `bubble ${place.x.toFixed(4)},${place.y.toFixed(4)},${place.size},${place.shape}` : lay.value;
+  const attempt = `${keptKey} ${looks}`;
   const fallback = S.failed === attempt;
   const key = fallback ? `${keptKey} fallback` : attempt;
   if (S.exported?.key === key) return S.exported;
   const cuts = fallback ? [] : cutEd.cuts;
   const ranges = cuts.length ? kept : [{ start, end }];
   if (!ranges.length) throw new Error('the cuts take out the whole clip');
-  const render = !!S.camera && !fallback;
+  const render = lay.id !== 'screen' && !fallback;
   const reencode = ranges.length > 1;
   const full = !render && !reencode && ranges[0].start <= 0.001 && ranges[0].end >= S.video.duration - 0.001;
   const count = cutEd.countIn(start, end);
@@ -244,10 +273,13 @@ async function ensureExport() {
   let blob;
   try {
     if (full) blob = S.video.blob;
-    else if (render) blob = await renderComposite({ screen: S.video.blob, camera: S.camera.blob, cameraOffset: S.camera.offset, ranges, bubble: place, onProgress });
-    else blob = await exportClip(S.video.blob, { start, end, cuts, onProgress });
+    else if (render) {
+      blob = await renderLayout({
+        screen: S.video.blob, camera: S.camera?.blob, cameraOffset: S.camera?.offset, ranges, layout: lay.id, bubble: place, colour: lay.colour, onProgress,
+      });
+    } else blob = await exportClip(S.video.blob, { start, end, cuts, onProgress });
   } catch (err) {
-    if (onProgress) { S.failed = attempt; err.fallback = reencode ? 'cuts' : 'render'; }
+    if (onProgress) { S.failed = attempt; err.fallback = reencode ? 'cuts' : 'render'; err.layout = lay; }
     throw err;
   } finally {
     ui.progress.hidden = true;
@@ -256,25 +288,33 @@ async function ensureExport() {
   const { duration, width, height } = full ? S.video : await probe(blob);
   const length = totalLength(ranges);
   const speed = `${(length / secs).toFixed(1)} s of video per second`;
+  const as = lay.id === 'bubble' ? 'with the bubble' : `as ${lay.label}${lay.id === 'padded' ? ` on ${lay.colour}` : ''}`;
   let how = '';
   if (full) how = ' (no trim needed)';
-  else if (render) how = `, rendered with the bubble${reencode ? ` and ${cutWord} taken out` : ''} at ${speed}`;
+  else if (render) how = `, rendered ${as}${reencode ? ` and ${cutWord} taken out` : ''} at ${speed}`;
   else if (reencode) how = `, re-encoded ${cutWord} at ${speed}`;
-  else if (fallback) how = ` (trim only, the ${S.camera ? 'render' : 're-encode'} failed)`;
+  else if (fallback) how = ` (trim only, the ${lay.id === 'screen' ? 're-encode' : 'render'} failed)`;
+  else how = ', trim only, copied as recorded';
   S.note('export', `${length.toFixed(1)} s clip, ${fmtMB(blob.size)}, ${secs.toFixed(1)} s${how}`);
+  S.note('layout', render ? `${lay.label}${lay.id === 'padded' ? ` on ${lay.colour}` : ''}, ${width}x${height}, rendered at ${speed}`
+    : `${fallback ? 'Screen only (the render failed)' : 'Screen only'}, ${width}x${height}, not rendered`);
   if (render) S.note('peak memory', `${heap.text()} while recording and rendering`);
   if (onProgress) say(ui.uploadMsg, '');
-  S.exported = { key, blob, duration, width, height, bubble: render ? place : null };
+  S.exported = { key, blob, duration, width, height, bubble: place, layout: render ? lay.value : 'screen' };
   return S.exported;
 }
 
 // The error panel's words when preparing the video fails.
 function prepareError(err, then) {
+  const bubbleOn = err.layout?.id === 'bubble';
   if (err.fallback === 'cuts') {
-    return `Could not re-encode the cuts (${err.message}). Upload and Download MP4 now use the trimmed video with the cut parts left in${S.camera ? ' and no webcam bubble' : ''}. Change or remove a cut to try again.`;
+    const without = err.layout && err.layout.id !== 'screen' ? (bubbleOn ? ' and no webcam bubble' : ` and not as ${err.layout.label}`) : '';
+    return `Could not re-encode the cuts (${err.message}). Upload and Download MP4 now use the trimmed video with the cut parts left in${without}. Change or remove a cut to try again.`;
   }
   if (err.fallback === 'render') {
-    return `Could not render the webcam bubble (${err.message}). Upload and Download MP4 now use the trimmed screen recording without it. Move the bubble or a trim handle to try again.`;
+    return bubbleOn
+      ? `Could not render the webcam bubble (${err.message}). Upload and Download MP4 now use the trimmed screen recording without it. Move the bubble or a trim handle to try again.`
+      : `Could not render the ${err.layout.label} layout (${err.message}). Upload and Download MP4 now use the trimmed screen recording. Change the layout or a trim handle to try again.`;
   }
   return `Could not prepare the video (${err.message}). ${then}`;
 }
@@ -286,20 +326,28 @@ function fileName() {
 // ---------- Upload and download ----------
 // While a file is being prepared or sent, Share stays disabled: a new share
 // would discard this recording out from under the upload. `button` is the
-// one doing the work; it shows the loading state. The bubble, its size and
+// one doing the work; it shows the loading state. The layout, the bubble and
 // the trim and cuts are read once when a render starts, so they hold still
 // until it is done, and for good once the link is made (the link keeps them).
+let locked = [false];
 function lock(on, button) {
+  locked = [on, button];
   ui.upload.disabled = ui.download.disabled = ui.retry.disabled = on;
   ui.share.disabled = on || S.keeping;
   for (const b of [ui.upload, ui.download, ui.retry]) busy(b, on && b === button);
-  for (const el of [ui.editBubble, ui.bubbleSet, ui.trimBox]) el.inert = on || S.linked;
-  // The note under the player says why they hold still, or how to move the bubble when they do not.
-  if (S.linked) ui.bubbleNote.textContent = 'The link keeps this clip and this bubble place. Record another to change them.';
-  else if (on) ui.bubbleNote.textContent = `The clip and bubble hold still while the video renders${button === ui.download ? '' : ' and uploads'}.`;
-  else ui.bubbleNote.textContent = PLACE_NOTE;
+  const held = on || S.linked, inBubble = layout.get().id === 'bubble';
+  for (const el of [ui.layoutSet, ui.colourSet, ui.bubbleSet, ui.trimBox]) el.inert = held;
+  ui.editBubble.inert = held || !inBubble; // in Split and Camera only the camera's box is not moved by hand
+  // The note under the tools says why they hold still, or how to move the bubble when they do not.
+  const what = inBubble ? 'bubble' : 'layout';
+  let text = inBubble ? PLACE_NOTE : '';
+  if (S.linked) text = `The link keeps this clip and this ${inBubble ? 'bubble place' : 'layout'}. Record another to change them.`;
+  else if (on) text = `The clip and ${what} hold still while the video renders${button === ui.download ? '' : ' and uploads'}.`;
+  ui.bubbleNote.textContent = text;
+  ui.bubbleNote.hidden = !text;
 }
 const PLACE_NOTE = ui.bubbleNote.textContent;
+layout.onChange(() => lock(...locked)); // the note and the bubble follow the layout
 
 // The bar and its percent, in bold tabular numerals beside it.
 function setProgress(fraction) {
@@ -332,8 +380,8 @@ async function upload(event) {
     const { url } = await uploadVideo({
       blob: out.blob, title: ui.title.value.trim() || 'Untitled', duration: out.duration,
       width: out.width, height: out.height, thumb, job: S.job,
-      cameraOffset: S.camera ? S.camera.offset : null, bubble: out.bubble,
-      raw: S.camera ? { screen: S.video.blob, camera: S.camera.blob } : null,
+      cameraOffset: S.camera ? S.camera.offset : null, bubble: out.bubble, layout: out.layout, again: S.again,
+      raw: S.camera && !S.again ? { screen: S.video.blob, camera: S.camera.blob } : null, // rendered again: the originals are kept already
       onProgress: (sent, total) => {
         setProgress(sent / total);
         say(ui.uploadMsg, `Uploading ${fmtMB(sent)} of ${fmtMB(total)}...`, 'note');
@@ -342,7 +390,7 @@ async function upload(event) {
     S.note('upload', `${fmtMB(out.blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s${S.job.multipart ? `, ${Object.keys(S.job.parts).length} parts` : ''}`);
     ui.progress.hidden = true;
     ui.upload.hidden = true;
-    say(ui.uploadMsg, 'Uploaded. Anyone with this link can watch.', 'note');
+    say(ui.uploadMsg, S.again ? 'Uploaded. The same link now plays this version.' : 'Uploaded. Anyone with this link can watch.', 'note');
     ui.shareUrl.value = url;
     ui.open.href = url;
     // With the link made, Download MP4 joins Open and Record another in one row.

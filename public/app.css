@@ -27,6 +27,8 @@
 .band[data-state="live"] #start, .band:not([data-state="live"]) #stop { display: none; }
 /* While recording, step 1 reads as a finished sign: check, title, note. */
 #app:has(#band2[data-state="live"]) #band1 :is(.band-tools, .band-action) { display: none; }
+/* Rendering an uploaded recording again: its toggles are for a new recording, so they wait (recorder.js). Share again stays. */
+#band1[data-again="on"] .band-tools { display: none; }
 
 /* ---------- Toggles: a black plate, lit (white glyph) or unlit (struck) ---------- */
 .toggle { display: inline-flex; align-items: center; gap: 12px; min-height: var(--sq); font-weight: 500; font-size: var(--t1); cursor: pointer; }
@@ -53,12 +55,15 @@
 .seg { position: relative; display: grid; place-items: center; width: var(--sq); height: var(--sq); color: var(--fg); box-shadow: inset 0 0 0 var(--line-w) var(--line); }
 .seg + .seg { margin-left: calc(-1 * var(--line-w)); }
 .seg .glyph { width: 50%; height: 50%; }
-.seg input:hover:not(:checked) { box-shadow: inset 0 0 0 4px var(--line); }
+.seg input:hover:not(:checked):not(:disabled) { box-shadow: inset 0 0 0 4px var(--line); }
 .seg input:checked { background: var(--fg); }
 .seg input:checked ~ .glyph { color: var(--sq-fg); }
 .on-black .seg input:checked ~ .glyph, .band:not([data-state="current"]) .seg input:checked ~ .glyph { color: var(--black); }
 .cam-group { display: flex; align-items: center; gap: 12px 14px; }
 .seg input:focus-visible { z-index: 1; }
+/* A plate that cannot be chosen (a layout that needs the camera, with the webcam off). */
+.seg:has(input:disabled) { color: color-mix(in srgb, var(--fg) 45%, transparent); box-shadow: inset 0 0 0 var(--line-w) color-mix(in srgb, var(--line) 30%, transparent); }
+.seg input:disabled { cursor: not-allowed; }
 
 /* Script: a plain text box in step 1's grid, shown by the Script toggle (and
    hidden while recording, by prompter.js). It spans the tools and the action
@@ -143,6 +148,9 @@
 .bubble[data-live="true"] video { display: block; }
 .bubble[data-live="true"]::before, .bubble[data-live="true"] > .glyph { display: none; }
 .bubble:hover { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
+/* Square: the same size and ring, corners at 8% of the diameter; inside the 3% ring they are 5% of it (5.32% of the inner side). */
+.bubble[data-shape="square"] { border-radius: 8%; }
+.bubble[data-shape="square"]::before, .bubble[data-shape="square"] video { border-radius: 5.32%; }
 /* Keyboard focus: the same two-colour ring as hover, so it reads over a dark picture too. */
 /* The transparent outline is what Windows high contrast paints, since it drops box-shadow. */
 .bubble:focus-visible { outline: 2px solid transparent; outline-offset: 4px; box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
@@ -172,33 +180,68 @@
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 24px 40px; align-items: start; }
 .player { padding: 12px; }
 #preview { width: 100%; max-height: 58vh; aspect-ratio: 16 / 9; background: var(--frame); }
-/* With a camera the player is two layers: the screen video, its picture at
-   the top and its controls on a 3.5rem strip below the picture, and over the
-   picture a frame of exactly its shape for the bubble (positioned by
-   bubble.js, as on the stage). The strip keeps the bubble off the controls. */
+/* A composed layout (all but Screen only) is two layers: the screen video,
+   its picture at the top and its controls on a 3.5rem strip below the
+   picture, and over the picture a frame of exactly its shape (--far, from
+   layouts.js through layout-tools.js) holding the camera: the bubble
+   (positioned by bubble.js, as on the stage) or the camera's box. The screen
+   video's picture is moved into its box by object-view-box (negative insets
+   leave room round it); the background under it is the layout's (--lay-bg);
+   the strip keeps the camera off the controls. */
 .clip, .clip-box { position: relative; }
-.clip[data-bubble="on"] { --bar: 3.5rem; --tall: 58vh; }
-.clip[data-bubble="on"] .clip-box {
-  width: min(100%, (var(--tall) - var(--bar)) * var(--ar, 1.7778)); margin-inline: auto; container-type: inline-size;
+.clip[data-composed="on"] { --bar: 3.5rem; --tall: 58vh; }
+.clip[data-composed="on"] .clip-box {
+  width: min(100%, (var(--tall) - var(--bar)) * var(--far, 1.7778)); margin-inline: auto; container-type: inline-size;
 }
 /* Full screen (the Full screen square): the same two layers, as large as the screen allows. */
 .clip:fullscreen { --tall: 100vh; display: grid; place-items: center; background: var(--black); }
-.clip:fullscreen .clip-box { width: min(100vw, (var(--tall) - var(--bar)) * var(--ar, 1.7778)); }
-.clip[data-bubble="on"] #preview {
-  display: block; height: calc(100cqi / var(--ar, 1.7778) + var(--bar)); max-height: none; aspect-ratio: auto;
+.clip:fullscreen .clip-box { width: min(100vw, (var(--tall) - var(--bar)) * var(--far, 1.7778)); }
+.clip[data-composed="on"] #preview {
+  display: block; height: calc(100cqi / var(--far, 1.7778) + var(--bar)); max-height: none; aspect-ratio: auto;
   object-fit: contain; object-position: top;
+  object-view-box: inset(var(--vb-t, 0%) var(--vb-r, 0%) var(--vb-b, 0%) var(--vb-l, 0%));
+  background: linear-gradient(var(--lay-bg, var(--black)), var(--lay-bg, var(--black))) top / 100% calc(100% - var(--bar)) no-repeat, var(--frame);
 }
 /* With controlslist="nofullscreen" Chrome still draws its full screen button, greyed; the Full screen square replaces it. */
-.clip[data-bubble="on"] #preview::-webkit-media-controls-fullscreen-button { display: none; }
-.clip-frame { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: var(--ar, 1.7778); pointer-events: none; }
+.clip[data-composed="on"] #preview::-webkit-media-controls-fullscreen-button { display: none; }
+/* The controls sit on their own strip here, so Chrome's dark scrim behind them would only shade the picture and the layout's colour above it. */
+.clip[data-composed="on"] #preview::-webkit-media-controls-panel { background-image: none; }
+.clip-frame { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: var(--far, 1.7778); pointer-events: none; }
 .clip-frame .bubble { pointer-events: auto; }
-.bubble-tools { display: grid; gap: 12px; margin-top: 16px; }
-.bubble-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
-.bubble-set { display: flex; align-items: center; gap: 12px 14px; }
+/* Split and Camera only: the camera fills its box (cover), with no ring; it is not moved by hand. */
+.clip:is([data-layout="split"], [data-layout="camera"]) #editBubble {
+  left: calc(var(--cx) * 100%); top: calc(var(--cy) * 100%); width: calc(var(--cw) * 100%); height: calc(var(--ch) * 100%);
+  aspect-ratio: auto; translate: none; border-radius: 0; background: transparent; box-shadow: none; cursor: default;
+}
+.clip:is([data-layout="split"], [data-layout="camera"]) #editBubble video { inset: 0; width: 100%; height: 100%; border-radius: 0; }
+
+/* Under the player: the Layout strip (and Full screen), the padded colour, the bubble's size and shape, the note. */
+.edit-tools { display: grid; justify-items: start; gap: 12px; margin-top: 16px; }
+.tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.tools-set { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
 .tools-label { font-weight: 500; font-size: var(--t1); }
+#shapeLabel { margin-left: 10px; }
+/* Colour swatches: 3rem squares painted in the colour with a 2px black rule; the chosen one has the selection ring. */
+.swatches { display: flex; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.swatch { position: relative; width: var(--sq); height: var(--sq); background: var(--swatch); box-shadow: inset 0 0 0 var(--line-w) var(--black); }
+.swatch[data-colour="cream"] { --swatch: var(--band); }
+.swatch[data-colour="black"] { --swatch: var(--black); }
+.swatch[data-colour="grey"] { --swatch: var(--grey); }
+.swatch[data-colour="vermilion"] { --swatch: var(--vermilion); }
+.swatch input {
+  appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  border: 0; border-radius: 0; background: transparent; cursor: pointer;
+}
+.swatch input:hover:not(:checked) { box-shadow: inset 0 0 0 4px var(--black); }
+.swatch:has(input:checked) { box-shadow: inset 0 0 0 var(--line-w) var(--black), 0 0 0 3px var(--surface), 0 0 0 5px var(--fg); }
+.swatch input:focus-visible { outline-offset: 7px; }
 .bubble-note { margin: 0; max-width: 60ch; font-size: var(--t0); line-height: 1.4; color: var(--fg-2); text-wrap: pretty; }
-/* While the video renders or uploads, and once the link is made, the place and the clip cannot change. */
-:is(#bubbleSet, #trim)[inert] { opacity: .45; } /* the bubble stays at full strength so the preview matches the video */
+/* While the video renders or uploads, and once the link is made, the layout, the place and the clip cannot change.
+   The bubble and the chosen colour stay at full strength, so they still show what the video has; the chosen
+   swatch loses its ring, since there is nothing left to choose. */
+:is(#layoutSet, #bubbleSet, #trim)[inert] { opacity: .45; }
+#colourSet[inert] :is(.tools-label, .swatch:not(:has(input:checked))) { opacity: .45; }
+#colourSet[inert] .swatch:has(input:checked) { box-shadow: inset 0 0 0 var(--line-w) var(--black); }
 #editBubble[inert] { cursor: default; }
 
 .trim { display: grid; gap: 10px; margin-top: 20px; }

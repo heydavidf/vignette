@@ -37,4 +37,15 @@
   <symbol id="i-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M4.5 12h15M12 4.5v15"/></g></symbol>
   <!-- Window: a frame with a small picture in its lower right corner (the floating self-view). -->
   <symbol id="i-window" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M11.5 11h7v5.5h-7z" fill="currentColor"/></symbol>
+  <!-- Layouts, each the frame of the video: bubble (a small disc lower left), split (a rule at 70%),
+       camera only (a small camera), screen only (a monitor: the frame on a short stand, so it is not the
+       frame glyph of Use current frame), padded (a frame inside the frame). -->
+  <symbol id="i-lay-bubble" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><circle cx="8" cy="14" r="2.75" fill="currentColor"/></symbol>
+  <symbol id="i-lay-split" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75zM15.75 4.75v14.5"/></g></symbol>
+  <symbol id="i-lay-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M6.75 9.5h6.5v5h-6.5zM13.25 11.25l4-2v5.5l-4-2z" fill="currentColor"/></symbol>
+  <symbol id="i-lay-screen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 3.75h18.5v12.5H2.75zM12 16.25v3.5M7.75 20.25h8.5"/></g></symbol>
+  <symbol id="i-lay-padded" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75zM7.75 9.25h8.5v5.5h-8.5z"/></g></symbol>
+  <!-- Bubble shapes: round, and square with the bubble's own 8% corners. -->
+  <symbol id="i-shape-round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.75"/></symbol>
+  <symbol id="i-shape-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.3" fill="none" stroke="currentColor" stroke-width="2.75"/></symbol>
 </svg>

@@ -10,7 +10,7 @@
 .c-size { width: 8rem; }
 .c-date { width: 15.5rem; }
 .c-status { width: 8.5rem; }
-.c-acts { width: 11.5rem; }
+.c-acts { width: 14.5rem; } /* four 2.75rem squares: copy, open, change layout, delete */
 .register th {
   padding: 18px 16px 12px; text-align: left; font-weight: 500; font-size: var(--t0); color: var(--smoke);
   border-bottom: var(--line-w) solid var(--rule-dark);
@@ -35,6 +35,7 @@
 /* "Originals kept" hangs under the size, so the size stays on the row's text line. */
 .reg-sz { position: relative; }
 .reg-raw { position: absolute; top: 100%; right: 0; white-space: nowrap; font-size: var(--t-small); line-height: 1.3; color: var(--ash); }
+.reg-state { display: none; font-weight: 400; font-size: var(--t-small); line-height: 1.3; color: var(--ash); }
 .status { font-weight: 500; }
 .status.uploading { color: var(--smoke); }
 
@@ -85,16 +86,19 @@
 .empty-text { font-size: var(--t1); line-height: 1.45; color: var(--ash); }
 .empty .act { margin-top: 8px; }
 
-/* Narrower screens: smaller plates; the status column goes (it is nearly always Ready). */
-@media (max-width: 1180px) and (min-width: 901px) {
+/* 1280px and below, down to 1001px: smaller plates; the status column goes (it is nearly always Ready).
+   The four action squares need 14.5rem, so these steps sit wider than the band grid's. */
+@media (max-width: 1280px) and (min-width: 1001px) {
   .c-thumb { width: 152px; }
-  .c-date { width: 12rem; }
+  .c-date { width: 11.25rem; } /* the date is Small here; 11.25rem holds the widest US date ("May 28, 2026, 12:08 PM", 147px); the rest goes to the title */
   .c-status, .register th:nth-child(6), .reg-status { display: none; }
+  .reg-state { display: block; }
+  .register .reg-date { font-size: var(--t-small); overflow: hidden; text-overflow: ellipsis; } /* a long date never runs under the squares */
   .reg-img { width: 120px; }
 }
 
-/* Phone and tablet width: each row recomposes into a small sign; nothing scrolls sideways. */
-@media (max-width: 900px) {
+/* 1000px and below (phone and tablet width): each row recomposes into a small sign; nothing scrolls sideways. */
+@media (max-width: 1000px) {
   .register thead { display: none; }
   .register, .register tbody { display: block; }
   .register tbody tr {
@@ -105,7 +109,7 @@
   .register td { display: block; padding: 0; border: 0; font-size: var(--t0); }
   .reg-thumb { grid-area: thumb; }
   .reg-img { width: 112px; }
-  .reg-title {
+  .register .reg-title { /* .register td sets 1rem otherwise; titles stay at 1.2rem */
     grid-area: title; font-size: var(--t1); margin-bottom: 4px; white-space: normal; overflow-wrap: anywhere;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
   }
@@ -113,7 +117,7 @@
   .reg-size { grid-area: size; text-align: left !important; color: var(--ash); }
   .reg-raw { position: static; display: block; }
   .reg-status { grid-area: status; justify-self: end; }
-  .reg-date { grid-area: date; font-size: var(--t-small); }
+  .register .reg-date { grid-area: date; font-size: var(--t-small); } /* .register td sets the size otherwise */
   .reg-actions { grid-area: acts; margin-top: 12px; }
   .reg-acts { justify-content: flex-start; flex-wrap: wrap; gap: 8px 20px; }
   /* Stacked: each pictogram carries its word, as on the signs. */

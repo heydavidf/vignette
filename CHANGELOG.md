@@ -25,8 +25,28 @@ Notable changes to Vignette. Versions follow [Semantic Versioning](https://semve
 - The window is Document Picture-in-Picture (Chrome and Edge). Browsers without it but with classic picture-in-picture get a video of the picture with the dot and the time on a black strip under it (no Stop, no script); others get nothing. If the browser refuses the window, the recording goes on without it. Details says which was used.
 - New pictograms: script, pause, minus, plus, window.
 
+### Layouts
+
+- The edit step has a **Layout** strip under the player: **Bubble** (as before), **Split** (the screen on the left, the camera in a column on the right), **Camera only**, **Screen only** and **Padded** (the screen at 86%, centred on a plain colour). One layout per recording. The preview shows it at once, with the player's controls still on the strip below; **Full screen** shows it too. The export and the thumbnail follow it. With the webcam off, Screen only (the default then) and Padded are offered and the others are disabled plates; with it on, Bubble is the default.
+- The bubble has a **Shape**: round, or square with corners at 8% of its width and the same ring. The size strip, the drag and the arrow keys are unchanged and show for Bubble only. The live preview and the floating window show the shape too.
+- Padded has four colour swatches: cream (the default), black, grey and vermilion.
+- Screen only with a trim keeps the copy path (no re-encode), as a recording without the webcam does; cuts re-encode. Every other layout renders. The Details panel names the layout and its render speed.
+- **Full screen** moved to the end of the Layout row, since every composed layout uses it. In Screen only it is hidden and the player's own full screen and picture in picture are back, with or without the webcam. In the other layouts the player's controls sit on their strip without the dark shading Chrome puts behind them.
+- Split puts a 2px black rule between the screen and the camera's column. Camera only is the camera's own size, capped at 1080p like the others.
+- While the video renders or uploads, and once the link is made, the layout strip fades; in Padded the chosen colour stays at full strength so it still shows the video's colour.
+- The layout, the shape and the colour are stored with the recording.
+- **Change layout** in the library (on recordings whose originals are kept) opens the recorder with the originals loaded straight into the edit step, with the title, the layout, the bubble and the colour as uploaded. Step 1 shows the download's progress. Pick a layout, trim if you like, and **Upload and replace**: the link stays the same and plays the old version until the new one is up, and the library row says "Rendering again" meanwhile. The originals are not uploaded again. Step 1's webcam, microphone and script toggles hide meanwhile, since they are for a new recording; Share again leaves this mode and brings them back. A recording without originals has no such square, and opening its address says why.
+- The library's action column is wider for the fourth square, so its narrower layouts apply at 1280px and below (the status column goes, the date is set smaller) and at 1000px and below (each row becomes a small sign); where the status column is hidden, a row that is not ready says so under its title.
+- New pictograms: the five layouts (Screen only is a monitor, so it differs from the frame of Use current frame) and the two shapes.
+
 ### Server and setup
 
+- New owner-only routes: `GET /api/videos/:id` (one recording: title, sizes, status, layout, bubble, whether the originals are kept) and `POST /api/videos/:id/again` (starts a new version of the video under the same id, always as a multipart upload, so R2 swaps the file only when it completes). A second one while the first uploads is refused with 409, unless the same upload is retrying or the first has been left for an hour. The new version's fields wait in the row's `upload_id` until it completes; the share page, `/media` and `/thumb` serve the current version until then. No database update is needed.
+- `POST /api/videos` takes any of the five layouts (padded with its colour) and the bubble's shape, and checks both; `GET /api/videos` includes the layout and whether a version is being rendered again.
+- The share page and the library add the file's size as a version to the media and thumbnail addresses, so a recording rendered again never mixes cached parts of the old file with the new one.
+- Media streaming moved to `worker/media.js`, JSON responses and errors to `worker/http.js`.
+- Width and height sent with an upload, or with a version rendered again, are stored only when they are whole numbers from 1 to 16384.
+- A request body that is JSON but not an object (`null`, a string, a list) is answered with 400, not a server error.
 - New owner-only route `GET /api/videos/:id/raw/screen|camera` (with Range support) for the originals. They are stored under `raw/` in R2 and never served by `/media` or any public path. Uploads take `?track=screen|camera` on the existing blob, parts and complete routes.
 - **Upgrade step for existing installs:** run `npm run db:migrate` once (`db:migrate:local` for the local database). It adds the new columns and says "already applied" if run again. Until it runs, share links keep working and the owner pages say what to run.
 - `scripts/wrangler.mjs` keeps a `--config` (or `-c`) given on the command line instead of adding `wrangler.local.toml`.
