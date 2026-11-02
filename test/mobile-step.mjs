@@ -187,7 +187,9 @@ export async function mobileStep(page, { record, assert, ok }) {
   await page.waitForTimeout(800); // the plate refreshes 300 ms after a change
   const [poster] = await page.evaluate(look, { mb: MB, source: 'poster', boxes: phoneBoxes(BAND.square) });
   const p = poster.boxes;
-  assert(poster.w * 16 === poster.h * 9 && p.rule.y < 30 && p.above.y > 40 && p.below.y > 40 && near(p.ref.y, s.ref.y, 25),
+  // The poster is half size, so the 2 px rule is one row that the JPEG blends with its neighbours (31 on Linux's
+  // encoder, 26 on macOS, where the camera band below reads 55); it must read clearly darker than both bands.
+  assert(poster.w * 16 === poster.h * 9 && p.rule.y < 45 && p.rule.y < Math.min(p.above.y, p.below.y) - 20 && p.above.y > 40 && p.below.y > 40 && near(p.ref.y, s.ref.y, 25),
     `the poster is ${poster.w}x${poster.h}, rule ${p.rule.y.toFixed(0)}, above ${p.above.y.toFixed(0)}, below ${p.below.y.toFixed(0)}, band ${p.ref.y.toFixed(0)} against the render's ${s.ref.y.toFixed(0)} (luma)`);
 
   // Camera only: no screen, so no toggle, and it is forced off.
