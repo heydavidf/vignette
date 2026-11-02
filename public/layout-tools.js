@@ -4,7 +4,10 @@
 // #clip, which move the screen video's picture (object-view-box) and the
 // camera video's box, so the two existing videos show the layout as it will
 // render. The bubble's place, size and shape stay with bubble.js; the
-// shape's squares are part of its view (editor.js attaches them).
+// shape's squares are part of its view (editor.js attaches them). While the
+// phone version's region box is shown (phone.js), the preview keeps its
+// composed form even in Screen only, so the box sits on the picture and off
+// the player's controls.
 import { LAYOUTS, layoutOf, layoutValue, geometry, previewVars, DEFAULT_COLOUR } from './layouts.js';
 
 /**
@@ -12,12 +15,12 @@ import { LAYOUTS, layoutOf, layoutValue, geometry, previewVars, DEFAULT_COLOUR }
  *                     layouts (the strip's radios) and colours (the swatches' radios)
  */
 export function attachLayoutTools(el) {
-  let id = 'screen', colour = DEFAULT_COLOUR, screen = null, camera = null, offered = [];
+  let id = 'screen', colour = DEFAULT_COLOUR, screen = null, camera = null, offered = [], framed = false;
   const listeners = [];
 
   // Shows the chosen layout: the strip, the tools that belong to it, and the preview.
   function show() {
-    const composed = id !== 'screen';
+    const composed = id !== 'screen' || framed;
     const g = geometry(id, screen.width, screen.height, camera?.width, camera?.height, colour);
     el.clip.dataset.layout = id;
     el.clip.dataset.composed = composed ? 'on' : 'off';
@@ -65,5 +68,7 @@ export function attachLayoutTools(el) {
     geometry: () => (screen ? geometry(id, screen.width, screen.height, camera?.width, camera?.height, colour) : null),
     // Runs fn() after the layout or the colour changes (the edit step refreshes its thumbnail).
     onChange(fn) { listeners.push(fn); },
+    // The phone version's region box is shown (or not): the preview takes its composed form for it.
+    setFramed(on) { if (framed === on) return; framed = on; if (screen) show(); },
   };
 }

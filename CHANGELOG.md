@@ -39,6 +39,19 @@ Notable changes to Vignette. Versions follow [Semantic Versioning](https://semve
 - The library's action column is wider for the fourth square, so its narrower layouts apply at 1280px and below (the status column goes, the date is set smaller) and at 1000px and below (each row becomes a small sign); where the status column is hidden, a row that is not ready says so under its title.
 - New pictograms: the five layouts (Screen only is a monitor, so it differs from the frame of Use current frame) and the two shapes.
 
+### Phone version
+
+- The edit step has a **Phone version** toggle under the layout tools (off by default; Camera only, which has no screen, hides it and suspends the phone version until a layout with a screen comes back, still on). Turned on, it makes a second, vertical video for phones, 1080x1920: a part of the screen on top and the camera below it, under a 2px black rule. Without the camera (or in Screen only and Padded, which leave it out) the part below is black, or the Padded colour. The bubble is never drawn in it.
+- The part of the screen it keeps is a box over the preview's screen picture, outlined 3px in vermilion with the rest of the picture dimmed. Drag it, or select it and use the arrow keys (Shift for five times as far); it never leaves the picture. While it shows, the note under the tools says "Drag the red box to choose the part of the screen the phone version keeps.", adding "Drag the bubble to place your webcam." in Bubble. **Kept part** is Wide (16:9, a 1080x608 band) or Square (a 1080x1080 band); **Size** is half, two thirds (the default, centred) or the whole width of the screen. A Square box on a wide screen is at most as tall as the screen, so its Whole is the screen's height. While the box shows, the preview keeps its composed form even in Screen only, so the box sits on the picture and off the player's controls (Full screen is then the square at the row's end).
+- A 9:16 plate, 160px tall, beside the thumbnail shows the phone version at the thumbnail's frame; it is the phone version's poster.
+- Export renders the phone version after the video, with the same trim and cuts and sound ("Rendering the phone version..."); **Download phone MP4** saves it. If it cannot be rendered, the page says so, the toggle turns off (struck), and Upload and Download MP4 go on without it. Details reports its size and render speed.
+- Upload sends the video and its thumbnail first, so the link works, then the phone version and its poster, then the originals. If the phone version fails, the link still works, the page says "Phone version not kept", and Retry sends only that.
+- The share page plays the phone version on a phone held upright (a viewport at most 900px wide and taller than wide, decided before the page first paints) and the full video otherwise. **Phone** and **Full** squares under the player switch between them from the same moment, and the page remembers the choice while it stays open. Download offers both files. Link previews keep the full video and thumbnail. Without JavaScript the page shows the full video.
+- The library says "Phone version" under the size of recordings that have one.
+- In the edit step's tool rows a label and its strip now wrap together on narrow screens ("Bubble size", "Shape", "Kept part", "Size"), and the thumbnail no longer drops when the 160px phone plate appears beside it.
+- Change layout brings the phone version back with its settings: change its box and it is rendered and replaced under the same link; turn it off and the old phone file and poster are removed.
+- New pictograms: a phone, the box's two shapes and its three sizes.
+
 ### Server and setup
 
 - New owner-only routes: `GET /api/videos/:id` (one recording: title, sizes, status, layout, bubble, whether the originals are kept) and `POST /api/videos/:id/again` (starts a new version of the video under the same id, always as a multipart upload, so R2 swaps the file only when it completes). A second one while the first uploads is refused with 409, unless the same upload is retrying or the first has been left for an hour. The new version's fields wait in the row's `upload_id` until it completes; the share page, `/media` and `/thumb` serve the current version until then. No database update is needed.
@@ -53,6 +66,10 @@ Notable changes to Vignette. Versions follow [Semantic Versioning](https://semve
 - wrangler pinned at 4.156.0 (was 4.151.2), which brings undici 7.30.1 and clears the `npm audit` finding the checks had carried since 2026-10-26.
 - Creating a video aborts the multipart uploads it opened in R2 if its database row cannot be written (for example on a 0.1 database before the update), so no parts are left behind.
 - The share page's HTML moved to `worker/share-page.js`; the Mediabunny helpers to `public/media.js`.
+- The phone version is a fourth file: `POST /api/videos` and `POST /api/videos/:id/again` take `mobile: {size, width, height, region, variant}` (checked: size under the cap, whole-number sides, the region as shares of the screen with w and h at least 0.1 and inside it, variant wide or square), stored in a new `mobile` column; uploads take `?track=mobile` (R2 key `videos/<id>-mobile.mp4`), and `PUT /api/videos/:id/thumb?track=mobile` its poster (`thumbs/<id>-mobile.jpg`). A version rendered again carries its phone version, always as a multipart upload, and completes it after its video. `GET /api/videos` and `GET /api/videos/:id` include `mobile` (without its upload record). Delete removes the phone file and poster and aborts an unfinished phone upload.
+- New public routes `/media/<id>/mobile` (Range support, as `/media`) and `/thumb/<id>/mobile`, served only once the phone file is complete; 404 otherwise. They read the new column only for these addresses, so a database not yet updated keeps serving the rest.
+- **Upgrade step for installs made before the phone version:** run `npm run db:migrate` once more (`migrations/0003-mobile.sql` adds the `mobile` column).
+- Checking what an upload declares moved to `worker/fields.js`; keeping the originals after the link to `public/keep.js`.
 
 ## 0.1.0 (2026-10-21)
 

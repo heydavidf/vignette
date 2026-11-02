@@ -1,14 +1,16 @@
-// Step 12 of the end-to-end suite (run from e2e.mjs): the database update
-// for 0.2 (migrations/0002-two-tracks.sql, applied by scripts/migrate.mjs).
-// A database made from the current schema.sql needs nothing; a 0.1 database
-// gets the new columns once and keeps its rows; a server still on a 0.1
-// database keeps its share links working and tells the owner what to run.
+// Step 12 of the end-to-end suite (run from e2e.mjs): the database updates
+// for 0.2 (migrations/0002-two-tracks.sql and 0003-mobile.sql, applied by
+// scripts/migrate.mjs). A database made from the current schema.sql needs
+// nothing; a 0.1 database gets the new columns once and keeps its rows; one
+// made by 0.2's first update gets the phone version's column alone; a server
+// still on a 0.1 database keeps its share links working and tells the owner
+// what to run.
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-export const MIGRATE_STEP = '12. Database update: a new database needs none, a 0.1 one gets the columns once, a server on a 0.1 one says what to run';
+export const MIGRATE_STEP = '12. Database update: a new database needs none, a 0.1 one gets the columns once, a 0.2 one gets the phone version\'s, a server on a 0.1 one says what to run';
 
 // The table as Vignette 0.1 made it, with one finished video in it.
 export const OLD_SCHEMA = `CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KEY, title TEXT NOT NULL, duration REAL NOT NULL,
@@ -16,7 +18,12 @@ export const OLD_SCHEMA = `CREATE TABLE IF NOT EXISTS videos (id TEXT PRIMARY KE
   upload_id TEXT, created_at INTEGER NOT NULL);
 INSERT INTO videos (id, title, duration, size, mime, width, height, status, upload_id, created_at)
   VALUES ('oldoldoldoldold1', 'Made with 0.1', 5, 1000, 'video/mp4', 1280, 720, 'ready', NULL, 1760000000000);`;
-const NEW_COLUMNS = ['camera_offset', 'has_raw', 'layout', 'bubble', 'raw_screen', 'raw_camera'];
+const NEW_COLUMNS = ['camera_offset', 'has_raw', 'layout', 'bubble', 'raw_screen', 'raw_camera', 'mobile'];
+// The same table after 0.2's first update (0002-two-tracks), before the phone version's column.
+const V02_SCHEMA = `${OLD_SCHEMA}
+ALTER TABLE videos ADD COLUMN camera_offset REAL; ALTER TABLE videos ADD COLUMN has_raw INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE videos ADD COLUMN layout TEXT NOT NULL DEFAULT 'bubble'; ALTER TABLE videos ADD COLUMN bubble TEXT;
+ALTER TABLE videos ADD COLUMN raw_screen TEXT; ALTER TABLE videos ADD COLUMN raw_camera TEXT;`;
 const MiB = 1024 * 1024;
 
 // Multipart uploads in a wrangler dev server's local R2 (miniflare keeps them in SQLite under the persist
@@ -60,7 +67,7 @@ export async function migrateStep({ root, env, old, auth, assert, ok }) {
     assert(init.code === 0, `npm run db:init:local failed:\n${init.out}`);
     for (let i = 0; i < 2; i++) {
       const m = await npm('db:migrate:local', fresh);
-      assert(m.code === 0 && /0002-two-tracks: already applied/.test(m.out), `db:migrate:local on a new database (run ${i + 1}):\n${m.out}`);
+      assert(m.code === 0 && /0002-two-tracks: already applied/.test(m.out) && /0003-mobile: already applied/.test(m.out), `db:migrate:local on a new database (run ${i + 1}):\n${m.out}`);
     }
     // A 0.1 database: the first run adds the columns, the second says it is done; the old row keeps its data.
     const v01 = await mkdtemp(join(tmpdir(), 'vignette-e2e-v01-'));
@@ -68,11 +75,22 @@ export async function migrateStep({ root, env, old, auth, assert, ok }) {
     const made = await run(process.execPath, ['scripts/wrangler.mjs', 'd1', 'execute', 'vignette', '--local', '--persist-to', v01, '--command', OLD_SCHEMA]);
     assert(made.code === 0, `could not make a 0.1 database:\n${made.out}`);
     const first = await npm('db:migrate:local', v01);
-    assert(first.code === 0 && /0002-two-tracks: applied .*added videos\.camera_offset, videos\.has_raw/.test(first.out), `first db:migrate:local on a 0.1 database:\n${first.out}`);
+    assert(first.code === 0 && /0002-two-tracks: applied .*added videos\.camera_offset, videos\.has_raw/.test(first.out) && /0003-mobile: applied .*added videos\.mobile\./.test(first.out),
+      `first db:migrate:local on a 0.1 database:\n${first.out}`);
     const again = await npm('db:migrate:local', v01);
     assert(again.code === 0 && /already applied/.test(again.out), `second db:migrate:local on a 0.1 database:\n${again.out}`);
     const cols = await columns(v01);
     assert(NEW_COLUMNS.every((c) => cols.includes(c)), `after the update the table has ${cols.join(', ')}`);
+    // A database from 0.2's first update: only the phone version's column is added, then it is done.
+    const v02 = await mkdtemp(join(tmpdir(), 'vignette-e2e-v02-'));
+    dirs.push(v02);
+    const made02 = await run(process.execPath, ['scripts/wrangler.mjs', 'd1', 'execute', 'vignette', '--local', '--persist-to', v02, '--command', V02_SCHEMA]);
+    assert(made02.code === 0, `could not make a 0.2 database:\n${made02.out}`);
+    const up02 = await npm('db:migrate:local', v02);
+    assert(up02.code === 0 && /0002-two-tracks: already applied/.test(up02.out) && /0003-mobile: applied to the local database, added videos\.mobile\./.test(up02.out), `db:migrate:local on a 0.2 database:\n${up02.out}`);
+    const again02 = await npm('db:migrate:local', v02);
+    const cols02 = await columns(v02);
+    assert(again02.code === 0 && /0003-mobile: already applied/.test(again02.out) && cols02.includes('mobile'), `second db:migrate:local on a 0.2 database:\n${again02.out}\ncolumns ${cols02.join(', ')}`);
     // No table at all: it says to run db:init instead, and fails.
     const empty = await mkdtemp(join(tmpdir(), 'vignette-e2e-empty-'));
     dirs.push(empty);
@@ -101,7 +119,7 @@ export async function migrateStep({ root, env, old, auth, assert, ok }) {
     const after = await fetch(`${old.base}/api/videos`, { headers: auth });
     const rows = (await after.json()).videos;
     assert(after.status === 200 && rows?.[0]?.id === 'oldoldoldoldold1' && rows[0].has_raw === 0, `after the update the list gave ${after.status} ${JSON.stringify(rows)}`);
-    ok('db:init:local then db:migrate:local (twice) says "already applied"; a 0.1 database gets the six columns once and keeps its row; '
+    ok('db:init:local then db:migrate:local (twice) says "already applied"; a 0.1 database gets the seven columns once and keeps its row; a 0.2 database gets videos.mobile alone, then "already applied"; '
       + 'no table says to run db:init:local; a server on 0.1 serves its link and answers "Run: npm run db:migrate" until the update (aborting the 3 multipart uploads its failed create opened), then lists');
   } finally {
     await Promise.all(dirs.map((d) => rm(d, { recursive: true, force: true }).catch(() => {})));

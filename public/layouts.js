@@ -28,11 +28,17 @@
 //   again.id        the recording being rendered again, or null
 //   again.progress  {sent, total} bytes of the originals downloaded so far
 //   again.error     what went wrong, as shown on the band, or ''
+// The phone version's hooks (window.__vignette.phone) are listed at the top of region.js.
+//
+// The phone version (mobile() below) is not one of the five: it is a second,
+// vertical file rendered beside the layout's, from a region of the screen.
 
 const MAX_W = 1920, MAX_H = 1080; // the output is capped at 1080p, as recordings are
 const SPLIT = 0.7;                // split: the screen's share of the width
 const RULE = 2;                   // split: a black rule between the screen and the camera, in output pixels
 const PAD = 0.86;                 // padded: the screen's share of the width and height
+const PHONE_W = 1080, PHONE_H = 1920; // the phone version's frame, 9:16
+const BANDS = { wide: 608, square: 1080 }; // the phone version's top band, by the region's shape
 
 export const COLOURS = { cream: '#F1E8D0', black: '#0B0B0B', grey: '#E6E6E6', vermilion: '#CF2E12' };
 export const DEFAULT_COLOUR = 'cream';
@@ -96,16 +102,36 @@ export function parseLayout(value) {
 // Where a picture srcW by srcH lands in `box` with its fit: the part of the
 // source to take (sx, sy, sw, sh) and where it goes (dx, dy, dw, dh), as
 // drawImage takes them. 'contain' takes the whole picture and centres it;
-// 'cover' fills the box and centre-crops the picture.
-export function fitRect(box, srcW, srcH, fit = 'contain') {
+// 'cover' fills the box and centre-crops the picture. With `region` ({x, y,
+// w, h} as shares of the picture) only that part of the picture is used.
+export function fitRect(box, srcW, srcH, fit = 'contain', region = null) {
+  const ox = region ? region.x * srcW : 0, oy = region ? region.y * srcH : 0;
+  const pw = region ? region.w * srcW : srcW, ph = region ? region.h * srcH : srcH;
   const cover = fit === 'cover';
-  const scale = (cover ? Math.max : Math.min)(box.w / srcW, box.h / srcH);
+  const scale = (cover ? Math.max : Math.min)(box.w / pw, box.h / ph);
   if (cover) {
     const sw = box.w / scale, sh = box.h / scale;
-    return { sx: (srcW - sw) / 2, sy: (srcH - sh) / 2, sw, sh, dx: box.x, dy: box.y, dw: box.w, dh: box.h };
+    return { sx: ox + (pw - sw) / 2, sy: oy + (ph - sh) / 2, sw, sh, dx: box.x, dy: box.y, dw: box.w, dh: box.h };
   }
-  const dw = srcW * scale, dh = srcH * scale;
-  return { sx: 0, sy: 0, sw: srcW, sh: srcH, dx: box.x + (box.w - dw) / 2, dy: box.y + (box.h - dh) / 2, dw, dh };
+  const dw = pw * scale, dh = ph * scale;
+  return { sx: ox, sy: oy, sw: pw, sh: ph, dx: box.x + (box.w - dw) / 2, dy: box.y + (box.h - dh) / 2, dw, dh };
+}
+
+// The phone version: a 1080x1920 frame. The region of the screen (shares of
+// the screen picture, from region.js) is cover-cropped into the top band,
+// 1080x608 for a wide region and 1080x1080 for a square one; with a camera,
+// the camera is cover-cropped into the rest, under a 2px black rule, on
+// black. Without one the rest is the background: black, or `colour` (the
+// padded colour, when Padded is the layout). The bubble is never drawn here.
+export function mobile(region, variant, screenW, screenH, hasCamera, colour) {
+  const band = BANDS[variant] || BANDS.wide;
+  const top = band + RULE;
+  return {
+    W: PHONE_W, H: PHONE_H,
+    screen: { x: 0, y: 0, w: PHONE_W, h: band, fit: 'cover', region },
+    camera: hasCamera ? { x: 0, y: top, w: PHONE_W, h: PHONE_H - top, fit: 'cover' } : null,
+    background: !hasCamera && COLOURS[colour] ? COLOURS[colour] : BLACK,
+  };
 }
 
 // The same geometry at another scale (the thumbnail is 640 wide).

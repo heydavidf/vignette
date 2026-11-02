@@ -6,7 +6,7 @@
 // prompter.js. Opened as /?again=<id> (the library's Change layout), it
 // loads an uploaded recording's originals (again.js) straight into step 3.
 import { requirePassword, showGateAgain } from './auth.js';
-import { openEditor, closeEditor, editorState, layout } from './editor.js';
+import { openEditor, closeEditor, editorState, layout, phone } from './editor.js';
 import { say, busy } from './ui.js';
 import * as bubble from './bubble.js';
 import { startTracks, heap } from './tracks.js';
@@ -408,7 +408,7 @@ async function startAgain({ id }) {
     ui.recordSummary.textContent = 'The originals, as recorded.';
     againHooks.state = 'ready';
     const stored = parseLayout(row.layout);
-    await openEditor(tracks, note, { id: row.id, title: row.title, layout: stored.id, colour: stored.colour, bubble: row.bubble });
+    await openEditor(tracks, note, { id: row.id, title: row.title, layout: stored.id, colour: stored.colour, bubble: row.bubble, mobile: row.mobile });
   } catch (err) {
     if (signal.aborted) return; // a new share left this mode
     againAbort.abort(); // the other original stops downloading too
@@ -472,6 +472,7 @@ window.__vignette = {
     set: (id, colour) => layout.set(id, colour), geometry: () => layout.geometry(),
   },
   again: againHooks,
+  phone: phone.hooks, // the phone version; the list is at the top of region.js
 };
 
 // After the password (again after a 401): load the recording the address names, if it still names one.

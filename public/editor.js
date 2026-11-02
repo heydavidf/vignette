@@ -5,8 +5,9 @@
 // place (bubble.js). Every layout but Screen only renders at export; Screen
 // only keeps the trim's copy path. An uploaded recording can come back here
 // from the library to be rendered again (again mode): its upload replaces
-// the video under the same link.
-import { uploadVideo, uploadOriginals } from './upload.js';
+// the video under the same link. The phone version (a second, vertical file)
+// is phone.js's; it renders after the video and goes up after the link works.
+import { uploadVideo } from './upload.js';
 import { showGateAgain } from './auth.js';
 import { say, busy, fmtTime } from './ui.js';
 import { initCuts, keptRanges, totalLength } from './cuts.js';
@@ -15,6 +16,8 @@ import { renderLayout, grabLayout } from './render.js';
 import * as bubble from './bubble.js';
 import { followScreen, heap } from './tracks.js';
 import { attachLayoutTools } from './layout-tools.js';
+import { attachPhone } from './phone.js';
+import { attachOriginals } from './keep.js';
 
 const MIN_CLIP = 0.5; // seconds; the trim handles never get closer than this
 const $ = (id) => document.getElementById(id);
@@ -27,8 +30,8 @@ const ui = {
   trimLength: $('trimLength'), setStart: $('setStart'), setEnd: $('setEnd'), title: $('title'),
   cutMarks: $('cutMarks'), cutFrom: $('cutFrom'), cutTo: $('cutTo'), cutMsg: $('cutMsg'), cutList: $('cutList'),
   thumbPlate: $('thumbPlate'), useFrame: $('useFrame'), thumbMsg: $('thumbMsg'),
-  uploadStep: $('uploadStep'), upload: $('upload'), download: $('download'), downloadLink: $('downloadLink'),
-  progress: $('progress'), progressPct: $('progressPct'), uploadMsg: $('uploadMsg'), retry: $('retry'), rawMsg: $('rawMsg'), retryRaw: $('retryRaw'),
+  uploadStep: $('uploadStep'), upload: $('upload'), download: $('download'), downloadLink: $('downloadLink'), downloadPhone: $('downloadPhone'),
+  progress: $('progress'), progressPct: $('progressPct'), uploadMsg: $('uploadMsg'), retry: $('retry'), rawMsg: $('rawMsg'), retryRaw: $('retryRaw'), retryPhone: $('retryPhone'),
   shareBox: $('shareBox'), shareUrl: $('shareUrl'), copy: $('copy'), copyLabel: $('copyLabel'), open: $('open'),
   uploadActs: $('uploadActs'), linkActs: $('linkActs'),
 };
@@ -37,7 +40,8 @@ const ui = {
 export const editorState = {
   video: null,      // the screen, re-packaged: {blob, duration, width, height, videoCodec, audioCodec}
   camera: null,     // the camera, re-packaged, or null: {blob, duration, width, height, offset, lostAt, ...}
-  exported: null,   // MP4 for the current handles, cuts and layout: {key, blob, duration, width, height, bubble, layout}
+  exported: null,   // MP4 for the current handles, cuts and layout: {key, blob, duration, width, height, bubble, layout, ranges, keptKey}
+  mobile: null,     // the phone version for them, while its toggle is on: {key, blob, width, height, region, variant}
   failed: null,     // the export whose re-encode or render failed; it falls back until something changes
   thumb: null,      // {blob, time, chosen, look}
   job: null,        // upload progress record, reused by both Retry buttons
@@ -69,12 +73,17 @@ export const layout = attachLayoutTools({
   clip: ui.clip, preview: ui.preview, editBubble: ui.editBubble, bubbleTools: ui.bubbleTools, colourSet: ui.colourSet, fullView: ui.fullView,
   layouts: document.querySelectorAll('input[name=layout]'), colours: document.querySelectorAll('input[name=padColour]'),
 });
+// After the link: the phone version (its toggle, region box, plate and render are phone.js's too), then the originals.
+const onKeeping = (on) => { S.keeping = on; ui.share.disabled = on || ui.upload.disabled; };
+export const phone = attachPhone({ S, layout, gate: ui.gate, setProgress: (f) => setProgress(f), objectUrl, onKeeping });
+const keepOriginals = attachOriginals({ S, gate: ui.gate, msg: ui.rawMsg, retry: ui.retryRaw, onKeeping });
 const UPLOAD_LABEL = ui.uploadLabel.textContent;
 
 export function closeEditor() {
   S.unfollow?.();
   S.urls.forEach((u) => URL.revokeObjectURL(u));
-  Object.assign(S, { video: null, camera: null, exported: null, failed: null, thumb: null, job: null, linked: false, again: null, unfollow: null, urls: [] });
+  Object.assign(S, { video: null, camera: null, exported: null, mobile: null, failed: null, thumb: null, job: null, linked: false, again: null, unfollow: null, urls: [] });
+  phone.close();
   ui.uploadLabel.textContent = UPLOAD_LABEL;
   cutEd.reset();
   ui.stepSizes.hidden = false; // step 1's size strip is for the next recording again
@@ -86,7 +95,7 @@ export function closeEditor() {
 
 // rec: what tracks.js recorded: {screen, camera, cameraOffset, cameraLostAt}.
 // again: an uploaded recording to render again ({id, title, layout, colour,
-// bubble}), whose originals are rec; they were re-packaged before they were
+// bubble, mobile}), whose originals are rec; they were re-packaged before they were
 // kept, so they are only measured here.
 export async function openEditor(rec, note, again = null) {
   closeEditor();
@@ -126,6 +135,7 @@ export async function openEditor(rec, note, again = null) {
   if (again?.bubble) bubble.set({ shape: 'round', ...again.bubble }, { save: false, w: width, h: height });
   showCamera();
   layout.open({ width, height }, S.camera && { width: S.camera.width, height: S.camera.height }, again && { id: again.layout, colour: again.colour });
+  phone.open({ width, height }, again?.mobile); // in again mode its settings come back, on
   ui.preview.src = objectUrl(S.video.blob); // after the layout has set the player's controls
   for (const r of [ui.trimStart, ui.trimEnd]) r.max = duration;
   ui.trimStart.value = 0;
@@ -223,6 +233,7 @@ async function setThumb(time, chosen) {
     : await grabLayout({ screen: S.video.blob, camera: S.camera?.blob, cameraOffset: S.camera?.offset, time, layout: id, bubble: bubble.get(), colour });
   if (token !== thumbToken || !S.video) return S.thumb?.blob;
   S.thumb = { blob, time, chosen, look: seen };
+  phone.schedule(time); // the phone poster follows the thumbnail's frame
   ui.thumbImg.src = objectUrl(blob);
   if (!ui.thumbImg.isConnected) ui.thumbPlate.replaceChildren(ui.thumbImg);
   say(ui.thumbMsg, chosen ? `Frame at ${fmtTime(time)}.` : 'Default: 1 second into the trimmed video.', 'note');
@@ -244,7 +255,13 @@ async function currentThumb() {
 // (cuts re-encode); every other layout renders. A re-encode or render shows
 // its progress under Upload. If one fails, the next export falls back to the
 // screen with the trim alone, until the cuts, the trim or the layout change.
+// With the Phone version on, its file is rendered next, for the same ranges.
 async function ensureExport() {
+  const out = await exportVideo();
+  await phone.ensure(out.ranges, out.keptKey, S.note);
+  return out;
+}
+async function exportVideo() {
   const { start, end } = getTrim();
   const kept = keptRanges(start, end, cutEd.cuts);
   const keptKey = kept.map((r) => `${r.start.toFixed(3)}-${r.end.toFixed(3)}`).join(',');
@@ -300,7 +317,7 @@ async function ensureExport() {
     : `${fallback ? 'Screen only (the render failed)' : 'Screen only'}, ${width}x${height}, not rendered`);
   if (render) S.note('peak memory', `${heap.text()} while recording and rendering`);
   if (onProgress) say(ui.uploadMsg, '');
-  S.exported = { key, blob, duration, width, height, bubble: place, layout: render ? lay.value : 'screen' };
+  S.exported = { key, blob, duration, width, height, bubble: place, layout: render ? lay.value : 'screen', ranges, keptKey };
   return S.exported;
 }
 
@@ -332,22 +349,26 @@ function fileName() {
 let locked = [false];
 function lock(on, button) {
   locked = [on, button];
-  ui.upload.disabled = ui.download.disabled = ui.retry.disabled = on;
+  ui.upload.disabled = ui.download.disabled = ui.downloadPhone.disabled = ui.retry.disabled = on;
   ui.share.disabled = on || S.keeping;
-  for (const b of [ui.upload, ui.download, ui.retry]) busy(b, on && b === button);
+  for (const b of [ui.upload, ui.download, ui.downloadPhone, ui.retry]) busy(b, on && b === button);
   const held = on || S.linked, inBubble = layout.get().id === 'bubble';
   for (const el of [ui.layoutSet, ui.colourSet, ui.bubbleSet, ui.trimBox]) el.inert = held;
+  phone.hold(held);
   ui.editBubble.inert = held || !inBubble; // in Split and Camera only the camera's box is not moved by hand
-  // The note under the tools says why they hold still, or how to move the bubble when they do not.
+  // The note under the tools says why they hold still, or how to move the bubble (and the phone version's box) when they do not.
   const what = inBubble ? 'bubble' : 'layout';
   let text = inBubble ? PLACE_NOTE : '';
+  if (phone.on()) text = inBubble ? `${BOX_NOTE} Drag the bubble to place your webcam.` : BOX_NOTE;
   if (S.linked) text = `The link keeps this clip and this ${inBubble ? 'bubble place' : 'layout'}. Record another to change them.`;
   else if (on) text = `The clip and ${what} hold still while the video renders${button === ui.download ? '' : ' and uploads'}.`;
   ui.bubbleNote.textContent = text;
   ui.bubbleNote.hidden = !text;
 }
 const PLACE_NOTE = ui.bubbleNote.textContent;
+const BOX_NOTE = 'Drag the red box to choose the part of the screen the phone version keeps.';
 layout.onChange(() => lock(...locked)); // the note and the bubble follow the layout
+phone.onChange(() => lock(...locked)); // and the note follows the phone version's box
 
 // The bar and its percent, in bold tabular numerals beside it.
 function setProgress(fraction) {
@@ -356,7 +377,7 @@ function setProgress(fraction) {
 }
 
 function resetUploadUi() {
-  ui.uploadActs.append(ui.download); // back beside Upload (see below)
+  ui.uploadActs.append(ui.download, ui.downloadPhone); // back beside Upload (see below)
   ui.upload.hidden = false;
   lock(false);
   ui.retry.hidden = ui.retryRaw.hidden = ui.progress.hidden = ui.shareBox.hidden = true;
@@ -370,7 +391,8 @@ async function upload(event) {
   try {
     say(ui.uploadMsg, 'Preparing the video...', 'note');
     const out = await ensureExport();
-    if (S.job && S.job.size !== out.blob.size) S.job = null; // the trim changed since the failed try
+    // The trim or the phone version changed since the failed try.
+    if (S.job && (S.job.size !== out.blob.size || (S.job.id && (S.job.mobile?.size ?? 0) !== (S.mobile?.blob.size ?? 0)))) S.job = null;
     S.job ||= {};
     const thumb = await currentThumb().catch(() => null); // a missing thumbnail should not block the upload
     stage = 'upload';
@@ -382,6 +404,7 @@ async function upload(event) {
       width: out.width, height: out.height, thumb, job: S.job,
       cameraOffset: S.camera ? S.camera.offset : null, bubble: out.bubble, layout: out.layout, again: S.again,
       raw: S.camera && !S.again ? { screen: S.video.blob, camera: S.camera.blob } : null, // rendered again: the originals are kept already
+      mobile: S.mobile,
       onProgress: (sent, total) => {
         setProgress(sent / total);
         say(ui.uploadMsg, `Uploading ${fmtMB(sent)} of ${fmtMB(total)}...`, 'note');
@@ -394,7 +417,7 @@ async function upload(event) {
     ui.shareUrl.value = url;
     ui.open.href = url;
     // With the link made, Download MP4 joins Open and Record another in one row.
-    ui.open.after(ui.download);
+    ui.open.after(ui.download, ui.downloadPhone);
     ui.shareBox.hidden = false;
     linked = S.linked = true;
   } catch (err) {
@@ -415,46 +438,20 @@ async function upload(event) {
   } finally {
     lock(false);
   }
-  if (linked && S.job.raw) keepOriginals();
+  if (linked && S.job.mobile) await phone.keep(S.job, S.note); // the phone version first, then the originals
+  if (linked && S.job.raw) keepOriginals(S.job);
 }
 
-// After the link works: the screen and camera as recorded go up too, so a
-// later version can render them again. A failure here never touches the
-// link; it says so, and Retry sends only what is missing.
-async function keepOriginals() {
-  const job = S.job;
-  S.keeping = true;
-  ui.share.disabled = ui.retryRaw.disabled = true;
-  busy(ui.retryRaw, true);
-  const t0 = performance.now();
-  try {
-    const total = await uploadOriginals({
-      job, files: { screen: S.video.blob, camera: S.camera.blob },
-      onProgress: (sent, all) => say(ui.rawMsg, `Keeping the originals: ${fmtMB(sent)} of ${fmtMB(all)}...`, 'note'),
-    });
-    ui.retryRaw.hidden = true;
-    say(ui.rawMsg, 'Originals kept: the screen and the camera as recorded are stored with the video.', 'note');
-    S.note('originals kept', `${fmtMB(total)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
-  } catch (err) {
-    if (err.status === 401) showGateAgain(ui.gate, 'The server did not accept the password. Enter it again, then click Retry.');
-    const reason = err.status ? err.message : 'the connection to the server dropped';
-    say(ui.rawMsg, `Originals not kept: the screen and camera files as recorded were not stored (${reason}). The link works without them. Retry sends only what is missing.`);
-    ui.retryRaw.hidden = false;
-    S.note('originals kept', `no: ${reason}`);
-  } finally {
-    S.keeping = false;
-    busy(ui.retryRaw, false);
-    ui.retryRaw.disabled = false;
-    ui.share.disabled = ui.upload.disabled; // locked only while something else is still working
-  }
-}
-
-async function download() {
-  lock(true, ui.download);
+// Download MP4, or Download phone MP4 (the vertical file, rendered with the video).
+async function download(event) {
+  const button = event?.currentTarget === ui.downloadPhone ? ui.downloadPhone : ui.download;
+  lock(true, button);
   try {
     const out = await ensureExport();
-    ui.downloadLink.href = objectUrl(out.blob);
-    ui.downloadLink.download = fileName();
+    const file = button === ui.download ? out : S.mobile;
+    if (!file) return; // the phone render failed; its message says so
+    ui.downloadLink.href = objectUrl(file.blob);
+    ui.downloadLink.download = button === ui.download ? fileName() : fileName().replace(/\.mp4$/, ' (phone).mp4');
     ui.downloadLink.click();
   } catch (err) {
     say(ui.uploadMsg, prepareError(err, 'Move a trim handle and try again.'));
@@ -480,8 +477,10 @@ ui.useFrame.addEventListener('click', () => setThumb(ui.preview.currentTime, tru
   .catch((err) => { say(ui.thumbMsg, `Could not grab that frame (${err.message}). Pause on another frame and try again.`); }));
 ui.upload.addEventListener('click', upload);
 ui.retry.addEventListener('click', upload);
-ui.retryRaw.addEventListener('click', keepOriginals);
+ui.retryRaw.addEventListener('click', () => keepOriginals(S.job));
 ui.download.addEventListener('click', download);
+ui.downloadPhone.addEventListener('click', download);
+ui.retryPhone.addEventListener('click', () => phone.keep(S.job, S.note));
 ui.copy.addEventListener('click', copyLink);
 ui.fullView.hidden = !document.fullscreenEnabled;
 ui.fullView.addEventListener('click', () => ui.clip.requestFullscreen().catch(() => {}));

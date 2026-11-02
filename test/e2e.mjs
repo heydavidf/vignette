@@ -17,6 +17,8 @@ import { selfviewSteps, SELFVIEW_STEP, SCRIPT_STEP, FALLBACK_STEP } from './self
 import { selfviewScenario, SELFVIEW_SCENARIO } from './selfview-scenario.mjs';
 import { layoutsStep, LAYOUTS_STEP, againStep, AGAIN_STEP } from './layouts-step.mjs';
 import { layoutsScenario, LAYOUTS_SCENARIO } from './layouts-scenario.mjs';
+import { mobileStep, MOBILE_STEP, mobileUploadStep, MOBILE_UPLOAD_STEP } from './mobile-step.mjs';
+import { mobileScenario, MOBILE_SCENARIO } from './mobile-scenario.mjs';
 
 const RECORD_SECONDS = 4;
 const PART = 20 * 1024 * 1024;
@@ -204,6 +206,13 @@ try {
   await againStep(page, { record, assert, ok, base, auth, api, listVideos, viewer: async () => watch(await context.newPage(), 'layouts viewer') });
   step(LAYOUTS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
   await layoutsScenario(page, { record, assert, ok, base, api, login, pageHooks, watch, dir: main.dir });
+
+  step(MOBILE_STEP);
+  await mobileStep(page, { record, assert, ok });
+  step(MOBILE_UPLOAD_STEP);
+  await mobileUploadStep(page, { record, assert, ok, base, api, listVideos, browser, dir: main.dir });
+  step(MOBILE_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await mobileScenario(page, { record, assert, ok, base, api, login, pageHooks, watch, dir: main.dir });
 
   step('4. Share page');
   const share = await fetch(`${base}/v/${id}`);

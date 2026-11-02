@@ -22,5 +22,8 @@ CREATE TABLE IF NOT EXISTS videos (
   layout TEXT NOT NULL DEFAULT 'bubble',
   bubble TEXT,                            -- JSON {x, y, size, shape}: the bubble's place (shape 'round' or 'square'; none stored means round)
   raw_screen TEXT,                        -- JSON {size, uploadId, ready}: the screen original's upload
-  raw_camera TEXT                         -- the same for the camera original
+  raw_camera TEXT,                        -- the same for the camera original
+  -- 0.2, the phone version (migrations/0003-mobile.sql): JSON {size, uploadId, ready, width, height,
+  -- region: {x, y, w, h} (the part of the screen it keeps, as shares), variant: 'wide' | 'square'}, or NULL.
+  mobile TEXT
 );

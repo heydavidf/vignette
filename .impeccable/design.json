@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-19T00:00:00Z",
+  "generatedAt": "2026-11-02T00:00:00Z",
   "title": "Design System: Vignette",
   "extensions": {
     "colorMeta": {
@@ -412,6 +412,38 @@
       "description": "The library row's fourth register square, between Open and Delete, on recordings whose originals are kept: a 2.75rem transparent plate with a 2px Smoke inset rule and the Split layout glyph at 1.375rem; hover fills white with a black glyph. Its word, Change layout, is visually hidden on wide screens and shown beside the plate at 1000px and below. It links to the recorder's again mode and goes while a new version uploads.",
       "html": "<div class=\"ds-reg\"><a class=\"ds-sqbtn\" href=\"#\" title=\"Change layout\"><span class=\"ds-sqbtn-sq\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M2.75 4.75h18.5v14.5H2.75zM15.75 4.75v14.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\"/></svg></span><span class=\"ds-sqbtn-word\">Change layout</span></a></div>",
       "css": ".ds-reg { padding: 24px 32px; background: #0B0B0B; color: #FFFFFF; font-family: var(--font, 'Fira Sans', sans-serif); } .ds-sqbtn { display: inline-flex; align-items: center; gap: 10px; color: #FFFFFF; text-decoration: none; font-weight: 500; font-size: 1rem; } .ds-sqbtn-sq { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; box-shadow: inset 0 0 0 2px #8C8C8C; } .ds-sqbtn-sq svg { width: 1.375rem; height: 1.375rem; } .ds-sqbtn:hover .ds-sqbtn-sq { background: #FFFFFF; color: #0B0B0B; box-shadow: none; }"
+    },
+    {
+      "name": "Phone version row",
+      "kind": "custom",
+      "refersTo": "band-current",
+      "description": "The edit step's row under the layout's own tools: the Phone version toggle (a black plate with the phone glyph, struck when off), then while it is lit \"Kept part\" with Wide and Square segments and \"Size\" with Half, Two thirds and Whole, built as the size strip. Each label and its strip wrap as one unit, pairs 24px apart. Absent in Camera only, which suspends it; inert at 45% while rendering, uploading and once linked.",
+      "html": "<div class=\"ds-ph\"><span class=\"ds-tg\"><svg viewBox=\"0 0 24 24\"><path d=\"M6.75 2.75h10.5v18.5H6.75zM10.75 17.5h2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span><span class=\"ds-ph-label\">Phone version</span><span class=\"ds-ph-label\">Kept part</span><span class=\"ds-seg ds-on\"><svg viewBox=\"0 0 24 24\"><path d=\"M2.75 6.8h18.5v10.4H2.75z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span><span class=\"ds-seg\"><svg viewBox=\"0 0 24 24\"><path d=\"M5.5 5.5h13v13h-13z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span></div>",
+      "css": ".ds-ph { display: flex; align-items: center; gap: 14px; padding: 24px 32px; background: #F1E8D0; color: #0B0B0B; font-family: var(--font, 'Fira Sans', sans-serif); } .ds-ph-label { font-weight: 500; font-size: 1.2rem; margin-right: 10px; } .ds-tg { display: grid; place-items: center; width: 3rem; height: 3rem; background: #0B0B0B; color: #FFFFFF; } .ds-tg svg, .ds-seg svg { width: 50%; height: 50%; } .ds-seg { display: grid; place-items: center; width: 3rem; height: 3rem; box-shadow: inset 0 0 0 2px #0B0B0B; } .ds-seg + .ds-seg { margin-left: -16px; } .ds-on { background: #0B0B0B; color: #FFFFFF; }"
+    },
+    {
+      "name": "Phone region box",
+      "kind": "custom",
+      "refersTo": "well",
+      "description": "Over the preview's screen picture while Phone version is lit: the part the phone version keeps, a 3px vermilion outline inside its edge, the rest of the screen picture under 45% black. Dragged like the bubble, nudged by the arrow keys, never leaves the picture; hover, focus and drag thicken the outline to 6px.",
+      "html": "<div class=\"ds-rg\"><div class=\"ds-rg-pic\"><div class=\"ds-rg-box\"></div></div></div>",
+      "css": ".ds-rg { padding: 24px 32px; background: #E6E6E6; } .ds-rg-pic { position: relative; width: 320px; aspect-ratio: 16 / 9; background: #2F7D32; overflow: hidden; } .ds-rg-box { position: absolute; left: 16.7%; top: 16.7%; width: 66.7%; height: 66.7%; outline: 3px solid #CF2E12; outline-offset: -3px; box-shadow: 0 0 0 100vmax rgba(11, 11, 11, .45); }"
+    },
+    {
+      "name": "Phone preview plate",
+      "kind": "custom",
+      "refersTo": "band-current",
+      "description": "Beside the thumbnail: a 9:16 Panel Frame plate 160px tall with a 2px black outline; the phone glyph in Smoke until the phone version's poster covers it.",
+      "html": "<div class=\"ds-pp\"><span class=\"ds-pp-plate\"><svg viewBox=\"0 0 24 24\"><path d=\"M6.75 2.75h10.5v18.5H6.75zM10.75 17.5h2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span></div>",
+      "css": ".ds-pp { padding: 24px 32px; background: #F1E8D0; } .ds-pp-plate { display: grid; place-items: center; height: 160px; aspect-ratio: 9 / 16; background: #1A1A1A; color: #8C8C8C; outline: 2px solid #0B0B0B; } .ds-pp-plate svg { width: 24px; height: 24px; }"
+    },
+    {
+      "name": "Share page version switch",
+      "kind": "custom",
+      "refersTo": "action-quiet",
+      "description": "With a phone version, two quiet actions centred under the player, Phone and Full, 24px apart; the version playing has its square filled black with a white glyph and its label at 700. The choice is remembered for the page.",
+      "html": "<div class=\"ds-vs\"><span class=\"ds-act ds-on\"><span class=\"ds-sq\"><svg viewBox=\"0 0 24 24\"><path d=\"M6.75 2.75h10.5v18.5H6.75zM10.75 17.5h2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span><b>Phone</b></span><span class=\"ds-act\"><span class=\"ds-sq\"><svg viewBox=\"0 0 24 24\"><path d=\"M2.75 6.8h18.5v10.4H2.75z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.75\" stroke-linecap=\"square\" stroke-linejoin=\"miter\"/></svg></span>Full</span></div>",
+      "css": ".ds-vs { display: flex; justify-content: center; gap: 24px; padding: 24px 32px; background: #E6E6E6; color: #0B0B0B; font-family: var(--font, 'Fira Sans', sans-serif); font-weight: 500; font-size: 1.2rem; } .ds-act { display: inline-flex; align-items: center; gap: 14px; } .ds-sq { display: grid; place-items: center; width: 3rem; height: 3rem; box-shadow: inset 0 0 0 2px #0B0B0B; } .ds-sq svg { width: 56%; height: 56%; } .ds-on .ds-sq { background: #0B0B0B; color: #FFFFFF; } .ds-act b { font-weight: 700; }"
     }
   ],
   "narrative": {

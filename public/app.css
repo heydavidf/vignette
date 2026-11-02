@@ -220,7 +220,9 @@
 .tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
 .tools-set { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
 .tools-label { font-weight: 500; font-size: var(--t1); }
-#shapeLabel { margin-left: 10px; }
+/* A label and its strip wrap as one unit; pairs sit 24px apart. */
+.tools-pair { display: inline-flex; align-items: center; gap: 14px; flex-wrap: nowrap; }
+.tools-set:has(> .tools-pair) { column-gap: 24px; }
 /* Colour swatches: 3rem squares painted in the colour with a 2px black rule; the chosen one has the selection ring. */
 .swatches { display: flex; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .swatch { position: relative; width: var(--sq); height: var(--sq); background: var(--swatch); box-shadow: inset 0 0 0 var(--line-w) var(--black); }
@@ -243,6 +245,25 @@
 #colourSet[inert] :is(.tools-label, .swatch:not(:has(input:checked))) { opacity: .45; }
 #colourSet[inert] .swatch:has(input:checked) { box-shadow: inset 0 0 0 var(--line-w) var(--black); }
 #editBubble[inert] { cursor: default; }
+
+/* The phone version (phone.js, region.js). #regionArea covers exactly the screen's picture (--ax/ay/aw/ah, shares
+   of the frame); #regionBox in it is the part the phone version keeps (--kx/ky/kw/kh, shares of the picture): a 3px
+   vermilion outline, the rest of the picture dimmed to 45% black, so the kept part reads as the picture and the rest
+   as discarded. It sits under the bubble; it is dragged like it, and thickens to 6px on hover, focus and drag. */
+.region-area {
+  position: absolute; z-index: 1; overflow: hidden; pointer-events: none;
+  left: calc(var(--ax, 0) * 100%); top: calc(var(--ay, 0) * 100%); width: calc(var(--aw, 1) * 100%); height: calc(var(--ah, 1) * 100%);
+}
+.region-box {
+  position: absolute; left: calc(var(--kx) * 100%); top: calc(var(--ky) * 100%); width: calc(var(--kw) * 100%); height: calc(var(--kh) * 100%);
+  outline: 3px solid var(--vermilion); outline-offset: -3px; box-shadow: 0 0 0 100vmax rgb(11 11 11 / .45);
+  pointer-events: auto; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.region-box:is(:hover, :focus-visible, .dragging) { outline-width: 6px; outline-offset: -6px; }
+.region-box.dragging { cursor: grabbing; }
+.region-box[inert] { cursor: default; outline-width: 3px; outline-offset: -3px; }
+#phoneTools { gap: 12px 24px; }
+#phoneTools[inert] :is(.toggle, #regionSet) { opacity: .45; }
 
 .trim { display: grid; gap: 10px; margin-top: 20px; }
 .trim-bar {
@@ -300,10 +321,14 @@
 .field { display: grid; gap: 8px; }
 .field-label { font-weight: 500; font-size: var(--t0); }
 .field input { width: 100%; }
-.thumb-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.thumb-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 16px; }
 .thumb-plate { display: grid; place-items: center; width: 176px; aspect-ratio: 16 / 9; background: var(--frame); color: var(--smoke); outline: var(--line-w) solid var(--black); }
 .thumb-plate .glyph { width: 28px; height: 28px; }
 #thumbImg { width: 100%; height: 100%; object-fit: cover; }
+/* The phone version's poster, beside the thumbnail: a 9:16 plate 160px tall. */
+.phone-plate { display: grid; place-items: center; height: 160px; aspect-ratio: 9 / 16; background: var(--frame); color: var(--smoke); outline: var(--line-w) solid var(--black); }
+.phone-plate .glyph { width: 24px; height: 24px; }
+#phoneImg { width: 100%; height: 100%; object-fit: cover; }
 .thumb .msg { font-size: var(--t-small); }
 
 .upload { display: grid; gap: 14px; padding-top: 24px; border-top: var(--line-w) solid var(--black); }
@@ -329,8 +354,8 @@ progress::-moz-progress-bar { background: var(--black); }
 .upload:has(#shareBox:not([hidden])) #uploadMsg { color: var(--fg); font-weight: 500; }
 .link-acts { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 #copy { justify-self: start; }
-#retryRaw { justify-self: start; }
-.upload:has(#shareBox:not([hidden])) .raw-msg:not([data-tone="error"]) { font-size: var(--t0); }
+#retryRaw, #retryPhone { justify-self: start; }
+#shareBox .msg:is(.raw-msg, .phone-msg):not([data-tone="error"]) { font-size: var(--t0); }
 
 /* ---------- Details ---------- */
 .details { border-top: var(--line-w) solid var(--rule-dark); background: var(--black); }

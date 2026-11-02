@@ -1,6 +1,7 @@
 // Library page: the owner's register of recordings, with copy, open, change
 // layout (for recordings whose originals are kept: the recorder renders them
-// again, /?again=<id>) and delete.
+// again, /?again=<id>) and delete. A row notes, under its size, whether the
+// originals are kept and whether it has a phone version.
 import { api, requirePassword, showGateAgain } from './auth.js';
 import { say, icon } from './ui.js';
 
@@ -121,14 +122,18 @@ function row(v) {
   };
   showActions();
 
+  const notes = [
+    v.has_raw ? el('span', { className: 'reg-raw', textContent: 'Originals kept' }) : null,
+    v.mobile?.ready ? el('span', { className: 'reg-phone', textContent: 'Phone version' }) : null,
+  ].filter(Boolean);
   const created = new Date(v.created_at);
   const tr = el('tr', { dataset: { id: v.id } },
     el('td', { className: 'reg-thumb' }, plate),
     // Where the status column is hidden, a row that is not ready says so under its title.
     el('td', { className: 'reg-title' }, title, ready ? null : el('span', { className: 'reg-state', textContent: state })),
     el('td', { className: 'reg-run r' }, fmtDuration(v.duration)),
-    // "Originals kept": the screen and camera as recorded are stored too (see README).
-    el('td', { className: 'reg-size r' }, el('span', { className: 'reg-sz' }, fmtSize(v.size), v.has_raw ? el('span', { className: 'reg-raw', textContent: 'Originals kept' }) : null)),
+    // Under the size: "Originals kept" (the screen and camera as recorded are stored too) and "Phone version" (a vertical file plays on phones).
+    el('td', { className: 'reg-size r' }, el('span', { className: 'reg-sz' }, fmtSize(v.size), notes.length ? el('span', { className: 'reg-notes' }, ...notes) : null)),
     el('td', { className: 'reg-date' }, el('time', { dateTime: created.toISOString(), textContent: fmtDate(v.created_at) })),
     el('td', { className: 'reg-status' }, el('span', { className: `status ${v.status}`, textContent: state })),
     el('td', { className: 'reg-actions' }, actions),

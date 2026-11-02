@@ -34,7 +34,8 @@
 .reg-date { color: var(--ash); }
 /* "Originals kept" hangs under the size, so the size stays on the row's text line. */
 .reg-sz { position: relative; }
-.reg-raw { position: absolute; top: 100%; right: 0; white-space: nowrap; font-size: var(--t-small); line-height: 1.3; color: var(--ash); }
+/* Notes hang under the size ("Originals kept", "Phone version"), so the size stays on the row's text line. */
+.reg-notes { position: absolute; top: 100%; right: 0; display: grid; justify-items: end; white-space: nowrap; font-size: var(--t-small); line-height: 1.3; color: var(--ash); }
 .reg-state { display: none; font-weight: 400; font-size: var(--t-small); line-height: 1.3; color: var(--ash); }
 .status { font-weight: 500; }
 .status.uploading { color: var(--smoke); }
@@ -115,7 +116,7 @@
   }
   .reg-run { grid-area: run; text-align: left !important; }
   .reg-size { grid-area: size; text-align: left !important; color: var(--ash); }
-  .reg-raw { position: static; display: block; }
+  .reg-notes { position: static; justify-items: start; }
   .reg-status { grid-area: status; justify-self: end; }
   .register .reg-date { grid-area: date; font-size: var(--t-small); } /* .register td sets the size otherwise */
   .reg-actions { grid-area: acts; margin-top: 12px; }

@@ -5,11 +5,15 @@
 // two originals (screen and camera as recorded). The video goes first and
 // its completion makes the link work; the originals follow, through the
 // same single-shot-or-multipart requests with ?track=screen or ?track=camera.
+// With a phone version (the vertical file), it goes up after the video and
+// its thumbnail and before the originals, as ?track=mobile, with its own
+// poster (PUT thumb?track=mobile); a failure there leaves the link working.
 //
 // Rendered again (from the library): the video replaces the recording's own
 // under the same link. POST /api/videos/:id/again opens it instead of a new
 // row; the bytes, completion and thumbnail then go through the same requests,
-// and the originals are not sent again.
+// and the originals are not sent again. A phone version declared with it
+// replaces the old one; a version without one removes it.
 //
 // Pass the same `job` object again after a failure and the upload resumes:
 // steps and parts that already succeeded are skipped, so a retry only
@@ -38,7 +42,7 @@ async function withRetry(fn) {
 }
 
 // Sends one file's bytes and completes it. `file` is its progress record
-// ({multipart, parts, uploaded, completed}); `track` is video, screen or camera.
+// ({multipart, parts, uploaded, completed}); `track` is video, screen, camera or mobile.
 // onProgress(sent) counts this file's bytes.
 async function sendFile({ base, track, blob, file, partSize, password, onProgress }) {
   const total = blob.size;
@@ -87,12 +91,14 @@ async function sendFile({ base, track, blob, file, partSize, password, onProgres
  * @param {string} [o.layout]             the layout it was rendered in ('bubble', 'split', 'camera', 'screen', 'padded:<colour>')
  * @param {string|null} [o.again]         an uploaded recording's id: replace its video instead of making a new one
  * @param {{screen: Blob, camera: Blob}|null} [o.raw]  the originals, declared now, sent later
+ * @param {{blob: Blob, width: number, height: number, region: object, variant: string}|null} [o.mobile]
+ *        the phone version, declared now, sent later with uploadPhone
  * @param {string} [o.password]
  * @param {(sent: number, total: number) => void} [o.onProgress]
  * @param {object} [o.job]     progress record; reuse it to retry
  */
 export async function uploadVideo({
-  blob, title, duration, width, height, thumb, cameraOffset = null, bubble = null, layout = 'bubble', again = null, raw = null,
+  blob, title, duration, width, height, thumb, cameraOffset = null, bubble = null, layout = 'bubble', again = null, raw = null, mobile = null,
   password = getPassword(), onProgress = () => {}, job = {},
 }) {
   const total = blob.size;
@@ -103,19 +109,21 @@ export async function uploadVideo({
   // lost response carry on with the version it opened.
   if (!job.id) {
     job.nonce ||= Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('');
+    const phone = mobile && { size: mobile.blob.size, width: mobile.width, height: mobile.height, region: mobile.region, variant: mobile.variant };
     const created = again
-      ? await api(`/api/videos/${again}/again`, { method: 'POST', password, body: { title, duration, size: total, width, height, layout, bubble, nonce: job.nonce } })
+      ? await api(`/api/videos/${again}/again`, { method: 'POST', password, body: { title, duration, size: total, width, height, layout, bubble, mobile: phone, nonce: job.nonce } })
       : await api('/api/videos', {
         method: 'POST', password,
         body: {
           title, duration, size: total, mime: 'video/mp4', width, height, cameraOffset, bubble, layout,
-          raw: raw ? { screen: raw.screen.size, camera: raw.camera.size } : null,
+          raw: raw ? { screen: raw.screen.size, camera: raw.camera.size } : null, mobile: phone,
         },
       });
     const fresh = (multipart) => ({ multipart, parts: {}, uploaded: false, completed: false });
     Object.assign(job, {
       id: created.id, size: total, partSize: created.partSize, ...fresh(created.multipart), thumbDone: false,
       raw: created.raw ? Object.fromEntries(ORIGINALS.map((t) => [t, fresh(created.raw[t].multipart)])) : null,
+      mobile: created.mobile ? { ...fresh(created.mobile.multipart), size: phone.size, posterDone: false } : null,
     });
   }
   const base = `/api/videos/${job.id}`;
@@ -150,4 +158,20 @@ export async function uploadOriginals({ job, files, password = getPassword(), on
     before += blob.size;
   }
   return total;
+}
+
+/**
+ * Sends the phone version declared by uploadVideo, then its poster. Throws on
+ * failure, leaving `job` ready for a retry that sends only what is missing.
+ * @param {{job: object, blob: Blob, poster: Blob|null, password?: string, onProgress?: (sent: number, total: number) => void}} o
+ */
+export async function uploadPhone({ job, blob, poster, password = getPassword(), onProgress = () => {} }) {
+  if (!job?.mobile) throw new Error('This upload has no phone version to send.');
+  if (job.mobile.size !== blob.size) throw new Error('This retry belongs to a different phone version. Start a new upload.');
+  const base = `/api/videos/${job.id}`;
+  await sendFile({ base, track: 'mobile', blob, file: job.mobile, partSize: job.partSize, password, onProgress: (sent) => onProgress(sent, blob.size) });
+  if (poster && !job.mobile.posterDone) {
+    await withRetry(() => api(`${base}/thumb?track=mobile`, { method: 'PUT', password, body: poster, headers: { 'content-type': 'image/jpeg' } }));
+    job.mobile.posterDone = true;
+  }
 }
