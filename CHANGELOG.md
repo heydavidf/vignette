@@ -50,6 +50,7 @@ Notable changes to Vignette. Versions follow [Semantic Versioning](https://semve
 - New owner-only route `GET /api/videos/:id/raw/screen|camera` (with Range support) for the originals. They are stored under `raw/` in R2 and never served by `/media` or any public path. Uploads take `?track=screen|camera` on the existing blob, parts and complete routes.
 - **Upgrade step for existing installs:** run `npm run db:migrate` once (`db:migrate:local` for the local database). It adds the new columns and says "already applied" if run again. Until it runs, share links keep working and the owner pages say what to run.
 - `scripts/wrangler.mjs` keeps a `--config` (or `-c`) given on the command line instead of adding `wrangler.local.toml`.
+- wrangler pinned at 4.156.0 (was 4.151.2), which brings undici 7.30.1 and clears the `npm audit` finding the checks had carried since 2026-10-26.
 - Creating a video aborts the multipart uploads it opened in R2 if its database row cannot be written (for example on a 0.1 database before the update), so no parts are left behind.
 - The share page's HTML moved to `worker/share-page.js`; the Mediabunny helpers to `public/media.js`.
 
