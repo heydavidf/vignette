@@ -1,6 +1,6 @@
 {
   "name": "vignette",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Open-source screen recorder that runs in the browser. Record, trim, cut, upload to your own Cloudflare account, share a link.",

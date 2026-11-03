@@ -2,7 +2,7 @@
 
 Notable changes to Vignette. Versions follow [Semantic Versioning](https://semver.org/); each release is a Git tag and a GitHub Release.
 
-## Unreleased
+## 0.2.0 (2026-11-03)
 
 ### Two tracks
 
