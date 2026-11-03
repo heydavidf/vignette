@@ -169,6 +169,7 @@ Where things live:
 - `public/editor.js`: the edit and upload steps. `public/keep.js`: keeping the originals after the link works. `public/media.js`: re-packaging, trimming, probing and thumbnails with Mediabunny.
 - `public/render.js`: the export in a layout (or the phone version): the screen and the camera decoded side by side and drawn into every frame, and the thumbnail drawn the same way.
 - `public/cuts.js`: mid-section cuts: the cut controls, cut skipping in the preview, and the re-encode that removes them.
+- `public/audio.js`: the sound on its way to the encoder in the render and the cuts, resampled to 48 kHz when it was recorded at another rate (a headset microphone's 24 kHz, for one).
 - `public/upload.js`: the chunked upload client with retries, for the video and the originals.
 - `public/auth.js`: the owner password form and API calls.
 - `public/ui.js`: small shared helpers for messages, pictograms and loading states.

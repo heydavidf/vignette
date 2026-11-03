@@ -9,6 +9,7 @@ import {
   getFirstEncodableVideoCodec, getFirstEncodableAudioCodec,
 } from './vendor/mediabunny-1.61.6.min.mjs';
 import { say, icon, fmtTime } from './ui.js';
+import { audioFeed } from './audio.js';
 
 export const MIN_CUT = 0.3; // seconds; shorter cuts are refused
 const FPS = 30;             // the re-encoded video's frame rate (the recorder's too)
@@ -99,18 +100,23 @@ export async function reencodeRanges(blob, ranges, onProgress) {
         }
       }
       if (aSink) {
+        const feed = audioFeed(); // one per range: a cut is a jump, so no frame carries over it
         for await (const sample of aSink.samples(s, e)) {
+          let out = null;
           try {
             // Whole audio frames only (about 20 ms each): one that starts inside
             // the range is kept even if it runs a few ms past the end. That
             // overlap is accepted for now; the max() keeps timestamps rising.
             if (sample.timestamp < s || sample.timestamp >= e) continue;
+            out = feed(sample); // at a rate the encoder takes (audio.js)
+            if (!out) continue;
             const t = Math.max(audioEnd, offset + sample.timestamp - s);
-            sample.setTimestamp(t);
-            await aSrc.add(sample);
-            audioEnd = t + sample.duration;
+            out.setTimestamp(t);
+            await aSrc.add(out);
+            audioEnd = t + out.duration;
           } finally {
             sample.close();
+            if (out !== sample) out?.close();
           }
         }
       }
