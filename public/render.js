@@ -1,0 +1,199 @@
+// The export renderer for every layout but Screen only (layouts.js has the
+// list and the geometry). The screen file and, where the layout shows it,
+// the camera file are decoded side by side; every output frame is drawn on
+// a canvas the layout's size (the bubble by bubble.js, exactly as the live
+// preview draws it) and encoded again; the sound is the screen file's. The
+// kept ranges (trim and cuts) decide which stretches are read, as the cuts
+// re-encode does. The phone version (layout 'mobile', layouts.js) is drawn
+// here too: the region of the screen on top, the camera below.
+//
+// Time: the output runs on a 30 fps grid. For the output frame at screen
+// time t, the screen picture is the screen frame showing at t and the
+// camera picture is the camera frame showing at t - cameraOffset: the one
+// with the largest timestamp at or before it. Where the camera has no newer
+// frame (it was unplugged, or stalled) the last one is held; before its
+// first frame (the few milliseconds the camera started late) the first is
+// used; a camera that never produced a frame means no camera picture.
+import {
+  Output, BufferTarget, Mp4OutputFormat, Quality, VideoSample,
+  VideoSampleSink, AudioSampleSink, VideoSampleSource, AudioSampleSource,
+  getFirstEncodableVideoCodec, getFirstEncodableAudioCodec,
+} from './vendor/mediabunny-1.61.6.min.mjs';
+import { openInput, frameAt, toJpeg } from './media.js';
+import { paint } from './bubble.js';
+import { heap } from './tracks.js';
+import { geometry, fitRect, scaled, layoutOf, mobile } from './layouts.js';
+
+const FPS = 30;
+const EPS = 0.001;
+
+// Walks a sample iterator in time order and answers "which frame is showing
+// at t". A frame stays until a later one is due, so a gap repeats the last.
+function follower(iterator) {
+  let held = null, next, started = false;
+  const pull = async () => { const r = await iterator.next(); return r.done ? null : r.value; };
+  return {
+    async at(t) {
+      if (!started) { next = await pull(); started = true; }
+      while (next && next.timestamp <= t + EPS) { held?.close(); held = next; next = await pull(); }
+      return held ?? next;
+    },
+    async close() { held?.close(); next?.close(); await iterator.return?.(); },
+  };
+}
+
+// Draws one picture (a decoded VideoSample) into its box with the box's fit (and region, in the phone version).
+function place(ctx, sample, box) {
+  const r = fitRect(box, sample.displayWidth, sample.displayHeight, box.fit, box.region);
+  sample.draw(ctx, r.sx, r.sy, r.sw, r.sh, r.dx, r.dy, r.dw, r.dh);
+}
+
+// One draw per layout, from the screen frame and the camera frame to the
+// canvas. g is the layout's geometry; either frame may be null (the camera
+// lost before its first frame, say), and then that picture is left out.
+const fill = (ctx, g) => { ctx.fillStyle = g.background; ctx.fillRect(0, 0, g.W, g.H); };
+const DRAW = {
+  bubble(ctx, g, sf, cf, bubble) {
+    fill(ctx, g);
+    if (sf) place(ctx, sf, g.screen);
+    if (cf) paint(ctx, bubble, g.W, g.H, cf.displayWidth, cf.displayHeight, (...a) => cf.draw(ctx, ...a));
+  },
+  split(ctx, g, sf, cf) { fill(ctx, g); if (sf) place(ctx, sf, g.screen); if (cf) place(ctx, cf, g.camera); },
+  camera(ctx, g, sf, cf) { fill(ctx, g); if (cf) place(ctx, cf, g.camera); },
+  screen(ctx, g, sf) { fill(ctx, g); if (sf) place(ctx, sf, g.screen); },
+  padded(ctx, g, sf) { fill(ctx, g); if (sf) place(ctx, sf, g.screen); },
+  // The rule between the region and the camera is the black background left showing.
+  mobile(ctx, g, sf, cf) { fill(ctx, g); if (sf) place(ctx, sf, g.screen); if (cf && g.camera) place(ctx, cf, g.camera); },
+};
+// The frame for a layout, or for the phone version (the camera shown when it is passed).
+const PHONE = 'mobile';
+const shows = (layout, camera) => !!camera && (layout === PHONE || layoutOf(layout).needsCamera);
+function frameOf({ layout, region, variant, colour }, sw, sh, cw, ch) {
+  return layout === PHONE ? mobile(region, variant, sw, sh, !!cw, colour) : geometry(layout, sw, sh, cw, ch, colour);
+}
+
+/**
+ * Renders a recording in a layout. Returns an MP4 Blob.
+ * @param {object} o
+ * @param {Blob} o.screen         re-packaged screen MP4 (video and the sound)
+ * @param {Blob|null} [o.camera]  re-packaged camera MP4 (video only), or null
+ * @param {number} o.cameraOffset seconds the camera started after the screen
+ * @param {{start: number, end: number}[]} o.ranges  stretches of the screen to keep, in order
+ * @param {string} o.layout       'bubble', 'split', 'camera', 'screen' or 'padded', or 'mobile' for the phone version
+ * @param {{x: number, y: number, size: string, shape: string}} [o.bubble]  where the bubble goes (bubble only)
+ * @param {string} [o.colour]     the padded background: 'cream', 'black', 'grey' or 'vermilion' (the phone version's, without a camera)
+ * @param {{x: number, y: number, w: number, h: number}} [o.region]  the phone version's part of the screen, as shares
+ * @param {string} [o.variant]    the phone version's top band: 'wide' or 'square'
+ * @param {(fraction: number) => void} [o.onProgress]
+ */
+export async function renderLayout({ screen, camera = null, cameraOffset = 0, ranges, layout, bubble, colour, region, variant, onProgress }) {
+  const draw = DRAW[layout];
+  if (!draw) throw new Error(`there is no ${layout} layout`);
+  const sIn = openInput(screen);
+  let cIn = null, output = null;
+  const open = [];
+  try {
+    const sTrack = await sIn.getPrimaryVideoTrack();
+    if (!sTrack) throw new Error('the screen recording has no video track');
+    const aTrack = await sIn.getPrimaryAudioTrack(); // null when recorded without sound
+    // The camera is opened only when the layout shows it.
+    if (shows(layout, camera)) cIn = openInput(camera);
+    const cTrack = cIn ? await cIn.getPrimaryVideoTrack() : null; // null: no camera picture
+    if (layout === 'camera' && !cTrack) throw new Error('the camera recording has no picture');
+    const g = frameOf({ layout, region, variant, colour }, sTrack.displayWidth, sTrack.displayHeight, cTrack?.displayWidth, cTrack?.displayHeight);
+    const { W, H } = g;
+    const videoCodec = await getFirstEncodableVideoCodec(['avc', 'vp9', 'av1'], { width: W, height: H });
+    if (!videoCodec) throw new Error('this browser cannot encode video');
+    const audioCodec = aTrack && await getFirstEncodableAudioCodec(['aac', 'opus']);
+    if (aTrack && !audioCodec) throw new Error('this browser cannot encode audio');
+
+    output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target: new BufferTarget() });
+    const vSrc = new VideoSampleSource({ codec: videoCodec, quality: new Quality({ bitrate: 5e6 }) });
+    output.addVideoTrack(vSrc, { frameRate: FPS });
+    const aSrc = audioCodec ? new AudioSampleSource({ codec: audioCodec, quality: new Quality({ bitrate: 128e3 }) }) : null;
+    if (aSrc) output.addAudioTrack(aSrc);
+    await output.start();
+
+    const canvas = new OffscreenCanvas(W, H);
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const sSink = g.screen ? new VideoSampleSink(sTrack) : null;
+    const cSink = g.camera && cTrack ? new VideoSampleSink(cTrack) : null;
+    const aSink = aSrc ? new AudioSampleSink(aTrack) : null;
+    const slotsOf = ({ start, end }) => Math.max(1, Math.round((end - start) * FPS));
+    const total = ranges.reduce((n, r) => n + slotsOf(r), 0);
+    let startSlot = 0, done = 0, audioEnd = 0;
+
+    for (const range of ranges) {
+      const { start: s, end: e } = range;
+      const slots = slotsOf(range);
+      const scr = sSink ? follower(sSink.samples(s, e)) : null;
+      const cam = cSink ? follower(cSink.samples(s - cameraOffset, e - cameraOffset)) : null;
+      open.push(scr, cam);
+      for (let k = 0; k < slots; k++) {
+        const t = s + k / FPS;
+        const sf = scr && await scr.at(t);
+        const cf = cam && await cam.at(t - cameraOffset);
+        draw(ctx, g, sf, cf, bubble);
+        const frame = new VideoSample(canvas, { timestamp: (startSlot + k) / FPS, duration: 1 / FPS });
+        try {
+          await vSrc.add(frame, { keyFrame: k === 0 }); // a keyframe where each range begins
+        } finally {
+          frame.close();
+        }
+        onProgress?.(Math.min(1, ++done / total));
+        if (done % FPS === 0) heap.sample();
+      }
+      await scr?.close();
+      await cam?.close();
+      open.length = 0;
+      if (aSink) {
+        const offset = startSlot / FPS;
+        for await (const sample of aSink.samples(s, e)) {
+          try {
+            // Whole audio frames only, as in cuts.js: one that starts inside
+            // the range is kept even if it runs a few ms past the end.
+            if (sample.timestamp < s || sample.timestamp >= e) continue;
+            const t = Math.max(audioEnd, offset + sample.timestamp - s);
+            sample.setTimestamp(t);
+            await aSrc.add(sample);
+            audioEnd = t + sample.duration;
+          } finally {
+            sample.close();
+          }
+        }
+      }
+      startSlot += slots;
+    }
+    vSrc.close();
+    aSrc?.close();
+    await output.finalize();
+    heap.sample();
+    return new Blob([output.target.buffer], { type: 'video/mp4' });
+  } catch (err) {
+    for (const f of open) await f?.close().catch(() => {});
+    await output?.cancel().catch(() => {});
+    throw err;
+  } finally {
+    sIn.dispose();
+    cIn?.dispose();
+  }
+}
+
+// A JPEG of the layout at screen time `time`, `width` pixels wide, drawn
+// with the same geometry and fits as the render, so the share page's poster
+// and the library show what the video does. Same inputs as renderLayout.
+export async function grabLayout({ screen, camera = null, cameraOffset = 0, time, layout, bubble, colour, region, variant, width = 640 }) {
+  // The phone version shows part of the screen, so the screen is decoded wider to keep that part sharp.
+  const picture = await frameAt(screen, time, layout === PHONE ? Math.min(1920, Math.round(width / Math.max(0.1, region?.w || 1))) : width);
+  if (!picture) throw new Error('Could not decode a frame for the thumbnail.');
+  const face = shows(layout, camera) ? await frameAt(camera, Math.max(0, time - cameraOffset), width).catch(() => null) : null;
+  if (layout === 'camera' && !face) throw new Error('Could not decode a camera frame for the thumbnail.');
+  const full = frameOf({ layout, region, variant, colour }, picture.width, picture.height, face?.width, face?.height);
+  const g = scaled(full, width / full.W);
+  const canvas = Object.assign(document.createElement('canvas'), { width: g.W, height: g.H });
+  const ctx = canvas.getContext('2d');
+  // Canvases stand in for decoded samples: the draws need only their size and a draw().
+  const asSample = (c) => c && { displayWidth: c.width, displayHeight: c.height, draw: (x, ...a) => x.drawImage(c, ...a) };
+  DRAW[layout](ctx, g, asSample(picture), asSample(face), bubble);
+  return toJpeg(canvas);
+}

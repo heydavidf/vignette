@@ -2,6 +2,76 @@
 
 Notable changes to Vignette. Versions follow [Semantic Versioning](https://semver.org/); each release is a Git tag and a GitHub Release.
 
+## Unreleased
+
+### Two tracks
+
+- With the webcam on, the screen and the camera are now recorded as two separate files. The bubble is no longer burned in while recording: it is drawn in when you export or upload, wherever you leave it in the edit step.
+- The edit step shows the bubble over the player, playing the camera in step with the screen. Drag it, select it and nudge it with the arrow keys, or pick its size there; **Full screen** shows the picture with the bubble (the player's own full screen and picture in picture are off then, since they would show the screen alone). Dragging it while recording still works and sets where it starts. While the video renders or uploads, and once the link is made, the bubble, the trim and the cuts hold still, because the link keeps them.
+- Export and upload with the camera on render the video (decode both files, draw each frame, encode again as H.264 through the browser's encoder), so they take a little longer; the progress text says "Rendering the video..." and the bar shows its percent. Without the camera nothing changes: a trim still copies.
+- The thumbnail shows the bubble where the video does.
+- After the link works, the originals (the screen and the camera as recorded) are uploaded too and kept with the video, for re-rendering in a later version. They contain everything that was trimmed or cut out. If that fails the link still works, the page says "Originals not kept" and what is missing, and Retry sends only that. The library marks such recordings "Originals kept". Delete removes them with the video.
+- The webcam is captured at up to 1280x720 (was 640x480), since its file is kept.
+- If the camera is unplugged or its permission taken back mid-recording, the screen keeps recording and the bubble holds the camera's last frame; the Details panel says when it happened.
+- The Details panel reports both file sizes, how much later the camera started and the render speed, plus the peak JavaScript heap. That heap is not the page's whole memory use: measured from outside on an Apple M1 Max (one run, renderer process only), a 60 second recording took about 757 MB, and about 1.04 GB while preparing and rendering (see README limits).
+
+### Floating self-view window
+
+- **Start recording** opens a small window that stays on top of other apps: 3-2-1 (the same split-flap flip as the page), then the picture being recorded, a red dot, the time and a Stop square that works like Stop on the page. Two squares switch the picture between the screen with the bubble and the camera alone. The window closes when the recording stops.
+- Closing the window by hand keeps the recording going; **Show window** in step 2 opens it again, with the script where it was (same place, speed and pause). Stop in the window is off during the countdown, as on the page.
+- Sharing the whole screen puts the window in the recording, so it then opens on the camera alone, and the window (under its controls) and the page say: "This window is in the recording. Move it to another screen, or share a window instead." The other view is still a click away.
+- With the webcam off the window shows the screen; the camera-only square is off.
+- New **Script** toggle in step 1: a text box for notes to read while recording, under the toggles (above Share screen on phones). The window shows them under the picture, scrolling slowly (one line every 2.5 s), with squares for slower, pause and faster (0.5x to 2x); the wheel or a drag scrolls by hand and holds the scroll for 3 s. With reduced motion it starts paused. The text stays in the browser tab (sessionStorage) and is never uploaded.
+- The window is Document Picture-in-Picture (Chrome and Edge). Browsers without it but with classic picture-in-picture get a video of the picture with the dot and the time on a black strip under it (no Stop, no script); others get nothing. If the browser refuses the window, the recording goes on without it. Details says which was used.
+- New pictograms: script, pause, minus, plus, window.
+
+### Layouts
+
+- The edit step has a **Layout** strip under the player: **Bubble** (as before), **Split** (the screen on the left, the camera in a column on the right), **Camera only**, **Screen only** and **Padded** (the screen at 86%, centred on a plain colour). One layout per recording. The preview shows it at once, with the player's controls still on the strip below; **Full screen** shows it too. The export and the thumbnail follow it. With the webcam off, Screen only (the default then) and Padded are offered and the others are disabled plates; with it on, Bubble is the default.
+- The bubble has a **Shape**: round, or square with corners at 8% of its width and the same ring. The size strip, the drag and the arrow keys are unchanged and show for Bubble only. The live preview and the floating window show the shape too.
+- Padded has four colour swatches: cream (the default), black, grey and vermilion.
+- Screen only with a trim keeps the copy path (no re-encode), as a recording without the webcam does; cuts re-encode. Every other layout renders. The Details panel names the layout and its render speed.
+- **Full screen** moved to the end of the Layout row, since every composed layout uses it. In Screen only it is hidden and the player's own full screen and picture in picture are back, with or without the webcam. In the other layouts the player's controls sit on their strip without the dark shading Chrome puts behind them.
+- Split puts a 2px black rule between the screen and the camera's column. Camera only is the camera's own size, capped at 1080p like the others.
+- While the video renders or uploads, and once the link is made, the layout strip fades; in Padded the chosen colour stays at full strength so it still shows the video's colour.
+- The layout, the shape and the colour are stored with the recording.
+- **Change layout** in the library (on recordings whose originals are kept) opens the recorder with the originals loaded straight into the edit step, with the title, the layout, the bubble and the colour as uploaded. Step 1 shows the download's progress. Pick a layout, trim if you like, and **Upload and replace**: the link stays the same and plays the old version until the new one is up, and the library row says "Rendering again" meanwhile. The originals are not uploaded again. Step 1's webcam, microphone and script toggles hide meanwhile, since they are for a new recording; Share again leaves this mode and brings them back. A recording without originals has no such square, and opening its address says why.
+- The library's action column is wider for the fourth square, so its narrower layouts apply at 1280px and below (the status column goes, the date is set smaller) and at 1000px and below (each row becomes a small sign); where the status column is hidden, a row that is not ready says so under its title.
+- New pictograms: the five layouts (Screen only is a monitor, so it differs from the frame of Use current frame) and the two shapes.
+
+### Phone version
+
+- The edit step has a **Phone version** toggle under the layout tools (off by default; Camera only, which has no screen, hides it and suspends the phone version until a layout with a screen comes back, still on). Turned on, it makes a second, vertical video for phones, 1080x1920: a part of the screen on top and the camera below it, under a 2px black rule. Without the camera (or in Screen only and Padded, which leave it out) the part below is black, or the Padded colour. The bubble is never drawn in it.
+- The part of the screen it keeps is a box over the preview's screen picture, outlined 3px in vermilion with the rest of the picture dimmed. Drag it, or select it and use the arrow keys (Shift for five times as far); it never leaves the picture. While it shows, the note under the tools says "Drag the red box to choose the part of the screen the phone version keeps.", adding "Drag the bubble to place your webcam." in Bubble. **Kept part** is Wide (16:9, a 1080x608 band) or Square (a 1080x1080 band); **Size** is half, two thirds (the default, centred) or the whole width of the screen. A Square box on a wide screen is at most as tall as the screen, so its Whole is the screen's height. While the box shows, the preview keeps its composed form even in Screen only, so the box sits on the picture and off the player's controls (Full screen is then the square at the row's end).
+- A 9:16 plate, 160px tall, beside the thumbnail shows the phone version at the thumbnail's frame; it is the phone version's poster.
+- Export renders the phone version after the video, with the same trim and cuts and sound ("Rendering the phone version..."); **Download phone MP4** saves it. If it cannot be rendered, the page says so, the toggle turns off (struck), and Upload and Download MP4 go on without it. Details reports its size and render speed.
+- Upload sends the video and its thumbnail first, so the link works, then the phone version and its poster, then the originals. If the phone version fails, the link still works, the page says "Phone version not kept", and Retry sends only that.
+- The share page plays the phone version on a phone held upright (a viewport at most 900px wide and taller than wide, decided before the page first paints) and the full video otherwise. **Phone** and **Full** squares under the player switch between them from the same moment, and the page remembers the choice while it stays open. Download offers both files. Link previews keep the full video and thumbnail. Without JavaScript the page shows the full video.
+- The library says "Phone version" under the size of recordings that have one.
+- In the edit step's tool rows a label and its strip now wrap together on narrow screens ("Bubble size", "Shape", "Kept part", "Size"), and the thumbnail no longer drops when the 160px phone plate appears beside it.
+- Change layout brings the phone version back with its settings: change its box and it is rendered and replaced under the same link; turn it off and the old phone file and poster are removed.
+- New pictograms: a phone, the box's two shapes and its three sizes.
+
+### Server and setup
+
+- New owner-only routes: `GET /api/videos/:id` (one recording: title, sizes, status, layout, bubble, whether the originals are kept) and `POST /api/videos/:id/again` (starts a new version of the video under the same id, always as a multipart upload, so R2 swaps the file only when it completes). A second one while the first uploads is refused with 409, unless the same upload is retrying or the first has been left for an hour. The new version's fields wait in the row's `upload_id` until it completes; the share page, `/media` and `/thumb` serve the current version until then. No database update is needed.
+- `POST /api/videos` takes any of the five layouts (padded with its colour) and the bubble's shape, and checks both; `GET /api/videos` includes the layout and whether a version is being rendered again.
+- The share page and the library add the file's size as a version to the media and thumbnail addresses, so a recording rendered again never mixes cached parts of the old file with the new one.
+- Media streaming moved to `worker/media.js`, JSON responses and errors to `worker/http.js`.
+- Width and height sent with an upload, or with a version rendered again, are stored only when they are whole numbers from 1 to 16384.
+- A request body that is JSON but not an object (`null`, a string, a list) is answered with 400, not a server error.
+- New owner-only route `GET /api/videos/:id/raw/screen|camera` (with Range support) for the originals. They are stored under `raw/` in R2 and never served by `/media` or any public path. Uploads take `?track=screen|camera` on the existing blob, parts and complete routes.
+- **Upgrade step for existing installs:** run `npm run db:migrate` once (`db:migrate:local` for the local database). It adds the new columns and says "already applied" if run again. Until it runs, share links keep working and the owner pages say what to run.
+- `scripts/wrangler.mjs` keeps a `--config` (or `-c`) given on the command line instead of adding `wrangler.local.toml`.
+- wrangler pinned at 4.156.0 (was 4.151.2), which brings undici 7.30.1 and clears the `npm audit` finding the checks had carried since 2026-10-26.
+- The GitHub checks job may take 45 minutes (was 25): with the phone version the two end-to-end runs together pass 25 minutes on the runner.
+- Creating a video aborts the multipart uploads it opened in R2 if its database row cannot be written (for example on a 0.1 database before the update), so no parts are left behind.
+- The share page's HTML moved to `worker/share-page.js`; the Mediabunny helpers to `public/media.js`.
+- The phone version is a fourth file: `POST /api/videos` and `POST /api/videos/:id/again` take `mobile: {size, width, height, region, variant}` (checked: size under the cap, whole-number sides, the region as shares of the screen with w and h at least 0.1 and inside it, variant wide or square), stored in a new `mobile` column; uploads take `?track=mobile` (R2 key `videos/<id>-mobile.mp4`), and `PUT /api/videos/:id/thumb?track=mobile` its poster (`thumbs/<id>-mobile.jpg`). A version rendered again carries its phone version, always as a multipart upload, and completes it after its video. `GET /api/videos` and `GET /api/videos/:id` include `mobile` (without its upload record). Delete removes the phone file and poster and aborts an unfinished phone upload.
+- New public routes `/media/<id>/mobile` (Range support, as `/media`) and `/thumb/<id>/mobile`, served only once the phone file is complete; 404 otherwise. They read the new column only for these addresses, so a database not yet updated keeps serving the rest.
+- **Upgrade step for installs made before the phone version:** run `npm run db:migrate` once more (`migrations/0003-mobile.sql` adds the `mobile` column).
+- Checking what an upload declares moved to `worker/fields.js`; keeping the originals after the link to `public/keep.js`.
+
 ## 0.1.0 (2026-10-21)
 
 The first public version: an open-source screen recorder that runs entirely in the browser and self-hosts on a free Cloudflare account.

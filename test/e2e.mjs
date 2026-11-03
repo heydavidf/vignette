@@ -4,148 +4,33 @@
 // the error paths each earlier bug fix covers.
 // Run: npm test   (HEADED=1 to watch, BACKGROUND=1 for real background throttling flags, DEBUG=1 for server logs)
 import { chromium } from 'playwright';
-import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { rm } from 'node:fs/promises';
+import {
+  root, env, auth, PASSWORD, assert, step, ok, servers, startServer, stopServers, pageHooks, login, record, listVideos, api, create,
+} from './harness.mjs';
 import { cutsStep, CUTS_STEP } from './cuts-step.mjs';
 import { cutsScenario, CUTS_SCENARIO } from './cuts-scenario.mjs';
+import { tracksStep, TRACKS_STEP, originalsStep, ORIGINALS_STEP } from './tracks-step.mjs';
+import { migrateStep, MIGRATE_STEP } from './migrate-step.mjs';
+import { tracksScenario, TRACKS_SCENARIO } from './tracks-scenario.mjs';
+import { selfviewSteps, SELFVIEW_STEP, SCRIPT_STEP, FALLBACK_STEP } from './selfview-step.mjs';
+import { selfviewScenario, SELFVIEW_SCENARIO } from './selfview-scenario.mjs';
+import { layoutsStep, LAYOUTS_STEP, againStep, AGAIN_STEP } from './layouts-step.mjs';
+import { layoutsScenario, LAYOUTS_SCENARIO } from './layouts-scenario.mjs';
+import { mobileStep, MOBILE_STEP, mobileUploadStep, MOBILE_UPLOAD_STEP } from './mobile-step.mjs';
+import { mobileScenario, MOBILE_SCENARIO } from './mobile-scenario.mjs';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const wranglerBin = join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
-// Non-Latin-1 on purpose: HTTP headers cannot carry it raw, so this checks the encoding.
-const PASSWORD = 'dev-ö-🎬';
 const RECORD_SECONDS = 4;
 const PART = 20 * 1024 * 1024;
 const BACKGROUND = process.env.BACKGROUND === '1';
-const env = { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_COLOR: '1' };
-const auth = { authorization: `Bearer ${encodeURIComponent(PASSWORD)}` };
-
-function assert(condition, message) { if (!condition) throw new Error(message); }
-function step(name) { console.log(`\n${name}`); }
-function ok(message) { console.log(`  ok  ${message}`); }
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = createServer().once('error', reject).listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
-function runWrangler(args) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [wranglerBin, ...args], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
-    let out = '';
-    child.stdout.on('data', (d) => { out += d; });
-    child.stderr.on('data', (d) => { out += d; });
-    child.on('exit', (code) => (code === 0 ? resolve(out) : reject(new Error(`wrangler ${args[0]} failed:\n${out}`))));
-  });
-}
-
-// ---------- Servers ----------
-const servers = [];
-async function startServer(name, password, initDb) {
-  const dir = await mkdtemp(join(tmpdir(), `vignette-e2e-${name}-`));
-  if (initDb) await runWrangler(['d1', 'execute', 'vignette', '--local', '--persist-to', dir, '--file=schema.sql']);
-  const port = await freePort();
-  const inspector = await freePort();
-  const server = { name, dir, base: `http://127.0.0.1:${port}`, log: '' };
-  // --var wins over .dev.vars, so the test does not depend on local config.
-  server.child = spawn(process.execPath, [
-    wranglerBin, 'dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector),
-    '--persist-to', dir, '--var', `VIGNETTE_PASSWORD:${password}`, '--show-interactive-dev-session=false',
-  ], { cwd: root, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  server.child.stdout.on('data', (d) => { server.log += d; });
-  server.child.stderr.on('data', (d) => { server.log += d; });
-  servers.push(server);
-  const deadline = Date.now() + 90_000;
-  while (Date.now() < deadline) {
-    if (server.child.exitCode !== null) throw new Error(`wrangler dev (${name}) exited early:\n${server.log}`);
-    try { if ((await fetch(`${server.base}/`)).ok) return server; } catch { /* not up yet */ }
-    await sleep(500);
-  }
-  throw new Error(`wrangler dev (${name}) did not start:\n${server.log}`);
-}
-
-function stopServers() {
-  for (const { child } of servers) {
-    if (child.exitCode !== null) continue;
-    // wrangler starts workerd as a child, so kill the whole process group.
-    try { process.kill(-child.pid, 'SIGTERM'); } catch { try { child.kill('SIGTERM'); } catch { /* gone */ } }
-  }
-}
-process.on('exit', stopServers);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(130));
-
-// Runs in every recorder page before its own scripts.
-function pageHooks() {
-  // Playwright's Chromium never marks a page hidden (checked: a background
-  // tab, a minimised window and headed mode all stay "visible" with full-speed
-  // timers). So while __inBackground is set, this simulates what Chrome does
-  // to a hidden tab: page timers run at most once a second.
-  const realInterval = window.setInterval;
-  const realTimeout = window.setTimeout;
-  window.setInterval = (fn, ms, ...args) => {
-    let last = 0;
-    return realInterval(() => {
-      if (window.__inBackground) { const now = performance.now(); if (now - last < 1000) return; last = now; }
-      fn(...args);
-    }, ms);
-  };
-  window.setTimeout = (fn, ms, ...args) => realTimeout(fn, window.__inBackground ? Math.max(ms || 0, 1000) : ms, ...args);
-  // Lets a step cancel the next screen picker, as a user pressing Cancel would.
-  const md = navigator.mediaDevices;
-  if (md?.getDisplayMedia) {
-    const real = md.getDisplayMedia.bind(md);
-    md.getDisplayMedia = (c) => {
-      if (!window.__cancelNextShare) return real(c);
-      window.__cancelNextShare = false;
-      return Promise.reject(new DOMException('Permission denied', 'NotAllowedError'));
-    };
-  }
-}
-
-async function login(page, base, password = PASSWORD) {
-  await page.goto(`${base}/`);
-  await page.waitForSelector('#gate:not([hidden])');
-  await page.fill('#password', password);
-  await page.click('#gate button[type=submit]');
-}
-
-// Returns how long the page says it recorded, from Start to Stop. (Switching
-// tabs takes time too, so this can run a little over `seconds` on a busy machine.)
-async function record(page, seconds, whileRecording = () => page.waitForTimeout(seconds * 1000)) {
-  await page.click('#share');
-  await page.waitForSelector('#recordStep:not([hidden])', { timeout: 15_000 });
-  await page.click('#start'); // a 3-2-1 countdown runs first
-  await page.waitForFunction(() => window.__vignette.state.phase === 'recording', null, { timeout: 10_000 });
-  await whileRecording();
-  await page.click('#stop');
-  await page.waitForSelector('#editBody:not([hidden])', { timeout: 60_000 });
-  return page.evaluate(() => (window.__vignette.state.stoppedAt - window.__vignette.state.startedAt) / 1000);
-}
-
-async function listVideos(base) {
-  const res = await fetch(`${base}/api/videos`, { headers: auth });
-  assert(res.status === 200, `GET /api/videos gave ${res.status}`);
-  return (await res.json()).videos;
-}
-
-const api = (base, path, init = {}) => fetch(`${base}${path}`, { ...init, headers: { ...auth, ...init.headers } });
-const create = (base, size) => api(base, '/api/videos', { method: 'POST', body: JSON.stringify({ title: 'probe', duration: 1, size }) }).then((r) => r.json());
 
 let browser = null;
 let passed = false;
 try {
-  step('Setup: two wrangler dev servers (one normal, one with no password set)');
-  const [main, unset] = await Promise.all([startServer('main', PASSWORD, true), startServer('unset', '', false)]);
+  step('Setup: three wrangler dev servers (one normal, one with no password set, one on a 0.1 database)');
+  const [main, unset, old] = await Promise.all([startServer('main', PASSWORD, 'current'), startServer('unset', '', null), startServer('old', PASSWORD, 'v0.1')]);
   const base = main.base;
-  ok(`main on ${base}, no-password server on ${unset.base}`);
+  ok(`main on ${base}, no-password server on ${unset.base}, 0.1 database on ${old.base}`);
 
   browser = await chromium.launch({
     headless: process.env.HEADED !== '1',
@@ -299,6 +184,36 @@ try {
   step(CUTS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
   await cutsScenario(page, { record, assert, ok, base, api, viewer: async () => watch(await context.newPage(), 'cuts viewer') });
 
+  step(TRACKS_STEP);
+  await tracksStep(page, { record, assert, ok });
+  step(ORIGINALS_STEP);
+  await originalsStep(page, { record, assert, ok, base, auth, listVideos, viewer: async () => watch(await context.newPage(), 'originals viewer') });
+  step(TRACKS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await tracksScenario(page, { record, assert, ok, base, api, viewer: async () => watch(await context.newPage(), 'tracks viewer') });
+
+  const selfview = selfviewSteps({ browser, base, login, pageHooks, watch, assert, ok }); // each in its own context
+  step(SELFVIEW_STEP);
+  await selfview.windowStep();
+  step(SCRIPT_STEP);
+  await selfview.scriptStep();
+  step(FALLBACK_STEP);
+  await selfview.fallbackStep();
+  step(SELFVIEW_SCENARIO); await selfviewScenario(page, { record, assert, ok, base, login, pageHooks, watch }); // the independent scenario test (AGENTS.md rule 5)
+
+  step(LAYOUTS_STEP);
+  await layoutsStep(page, { record, assert, ok });
+  step(AGAIN_STEP);
+  await againStep(page, { record, assert, ok, base, auth, api, listVideos, viewer: async () => watch(await context.newPage(), 'layouts viewer') });
+  step(LAYOUTS_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await layoutsScenario(page, { record, assert, ok, base, api, login, pageHooks, watch, dir: main.dir });
+
+  step(MOBILE_STEP);
+  await mobileStep(page, { record, assert, ok });
+  step(MOBILE_UPLOAD_STEP);
+  await mobileUploadStep(page, { record, assert, ok, base, api, listVideos, browser, dir: main.dir });
+  step(MOBILE_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await mobileScenario(page, { record, assert, ok, base, api, login, pageHooks, watch, dir: main.dir });
+
   step('4. Share page');
   const share = await fetch(`${base}/v/${id}`);
   const html = await share.text();
@@ -446,6 +361,9 @@ try {
   assert(/npm run db:init/.test(noTable.error), `missing table gave ${JSON.stringify(noTable)}`);
   ok(`the page shows "${expected}"; a missing table says to run npm run db:init`);
   await stranger.close();
+
+  step(MIGRATE_STEP);
+  await migrateStep({ root, env, old, auth, assert, ok });
 
   assert(pageErrors.length === 0, `page errors:\n${pageErrors.join('\n')}`);
   passed = true;

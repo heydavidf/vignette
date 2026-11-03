@@ -55,6 +55,14 @@
               <span class="sq tg"><input id="mic" type="checkbox" checked><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-mic"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
               <span class="toggle-label">Microphone</span>
             </label>
+            <label class="toggle">
+              <span class="sq tg"><input id="scriptOn" type="checkbox" aria-controls="scriptRow"><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-script"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
+              <span class="toggle-label">Script</span>
+            </label>
+          </div>
+          <!-- The script for the self-view window's panel. Kept in this tab only (sessionStorage), never uploaded. -->
+          <div id="scriptRow" class="script-row" hidden>
+            <label class="script-field"><span class="vh">Script text</span><textarea id="script" rows="4" placeholder="Notes to read while you record. Only you see them."></textarea></label>
           </div>
           <button id="share" type="button" class="act band-action">
             <span class="act-label"><span class="if-open">Share screen</span><span class="if-done">Share again</span></span>
@@ -75,7 +83,7 @@
                 <video id="bubbleVideo" muted playsinline></video>
                 <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-camera"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg>
               </div>
-              <p id="bubbleHelp" class="vh">Drag it, or use the arrow keys, to move it. It is recorded where you put it.</p>
+              <p id="bubbleHelp" class="vh">Drag it, or use the arrow keys, to move it. You can move it again after recording, before you share.</p>
               <div id="countdown" class="countdown" hidden><span id="flap" class="flap" aria-live="assertive"></span></div>
             </div>
           </div>
@@ -93,6 +101,11 @@
           <div id="recordStep" class="band-body" hidden>
             <p class="band-note if-open">A 3 second countdown runs first. Work in any tab; recording carries on.</p>
             <p class="band-note if-live">Recording. Stop when you are done.</p>
+            <!-- The floating self-view window (selfview.js): its whole-screen note while it is open, Show window once it is closed. -->
+            <div class="band-tools view-tools">
+              <p id="viewNote" class="view-note" hidden></p>
+              <button id="showWindow" type="button" class="act act--quiet" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-window"/></svg></span><span class="act-label">Show window</span></button>
+            </div>
             <div class="band-action">
               <button id="start" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Start recording</span></button>
               <button id="stop" type="button" class="act" disabled><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-stop"/></svg></span><span class="act-label">Stop</span></button>
@@ -109,7 +122,87 @@
             <div class="msg band-alert" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="editMsg" role="status"></p></div>
             <div id="editBody" class="editor" hidden>
               <div class="editor-main">
-                <div class="player on-grey"><video id="preview" controls playsinline preload="auto"></video></div>
+                <div class="player on-grey">
+                  <!-- The layout (layouts.js) places the two videos by CSS: the screen in #preview (its picture moved by object-view-box,
+                       its controls on a strip below the picture) and the camera in #editBubble, the bubble or the camera's box.
+                       #clipFrame covers exactly the picture. Full screen takes #clip; the video's own full screen and picture in
+                       picture are off unless the layout is Screen only. With the Phone version on, #regionArea covers the screen's
+                       picture and #regionBox in it is the part the phone version keeps (region.js); the preview keeps its composed form. -->
+                  <div id="clip" class="clip" data-composed="off" data-layout="screen">
+                    <div class="clip-box">
+                      <video id="preview" controls controlslist="nodownload" playsinline preload="auto"></video>
+                      <div id="clipFrame" class="clip-frame">
+                        <div id="editBubble" class="bubble" tabindex="0" role="button" aria-label="Webcam bubble" aria-describedby="editBubbleHelp" data-live="true" data-cam="on" hidden>
+                          <video id="camPreview" muted playsinline preload="auto"></video>
+                          <svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-camera"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg>
+                        </div>
+                        <div id="regionArea" class="region-area" hidden>
+                          <div id="regionBox" class="region-box" tabindex="0" role="button" aria-label="Phone version region" aria-describedby="regionHelp"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div id="layoutTools" class="edit-tools">
+                  <div class="tools-row">
+                    <div id="layoutSet" class="tools-set">
+                      <span id="layoutLabel" class="tools-label">Layout</span>
+                      <fieldset class="sizes" aria-labelledby="layoutLabel">
+                        <label class="seg" title="Bubble"><input type="radio" name="layout" value="bubble"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-bubble"/></svg><span class="vh">Bubble</span></label>
+                        <label class="seg" title="Split"><input type="radio" name="layout" value="split"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-split"/></svg><span class="vh">Split</span></label>
+                        <label class="seg" title="Camera only"><input type="radio" name="layout" value="camera"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-camera"/></svg><span class="vh">Camera only</span></label>
+                        <label class="seg" title="Screen only"><input type="radio" name="layout" value="screen"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-screen"/></svg><span class="vh">Screen only</span></label>
+                        <label class="seg" title="Padded"><input type="radio" name="layout" value="padded"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-lay-padded"/></svg><span class="vh">Padded</span></label>
+                      </fieldset>
+                    </div>
+                    <button id="fullView" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-full"/></svg></span><span class="act-label">Full screen</span></button>
+                  </div>
+                  <div id="colourSet" class="tools-set" hidden>
+                    <span id="colourLabel" class="tools-label">Colour</span>
+                    <fieldset class="swatches" aria-labelledby="colourLabel">
+                      <label class="swatch" data-colour="cream" title="Cream"><input type="radio" name="padColour" value="cream"><span class="vh">Cream</span></label>
+                      <label class="swatch" data-colour="black" title="Black"><input type="radio" name="padColour" value="black"><span class="vh">Black</span></label>
+                      <label class="swatch" data-colour="grey" title="Grey"><input type="radio" name="padColour" value="grey"><span class="vh">Grey</span></label>
+                      <label class="swatch" data-colour="vermilion" title="Vermilion"><input type="radio" name="padColour" value="vermilion"><span class="vh">Vermilion</span></label>
+                    </fieldset>
+                  </div>
+                  <div id="bubbleTools" class="tools-row" hidden>
+                    <div id="bubbleSet" class="tools-set">
+                      <span class="tools-pair"><span id="editSizeLabel" class="tools-label">Bubble size</span>
+                      <fieldset class="sizes" aria-labelledby="editSizeLabel">
+                        <label class="seg" title="Small"><input type="radio" name="editBubbleSize" value="small"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-s"/></svg><span class="vh">Small</span></label>
+                        <label class="seg" title="Medium"><input type="radio" name="editBubbleSize" value="medium"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-m"/></svg><span class="vh">Medium</span></label>
+                        <label class="seg" title="Large"><input type="radio" name="editBubbleSize" value="large"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-size-l"/></svg><span class="vh">Large</span></label>
+                      </fieldset></span>
+                      <span class="tools-pair"><span id="shapeLabel" class="tools-label">Shape</span>
+                      <fieldset class="sizes" aria-labelledby="shapeLabel">
+                        <label class="seg" title="Round"><input type="radio" name="editBubbleShape" value="round"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-shape-round"/></svg><span class="vh">Round</span></label>
+                        <label class="seg" title="Square"><input type="radio" name="editBubbleShape" value="square"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-shape-square"/></svg><span class="vh">Square</span></label>
+                      </fieldset></span>
+                    </div>
+                  </div>
+                  <div id="phoneTools" class="tools-row" hidden>
+                    <label class="toggle">
+                      <span class="sq tg"><input id="phoneOn" type="checkbox" aria-controls="regionSet"><svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><use href="/icons.svg#i-phone"/><path class="knock" d="M3.5 3.5l17 17"/><path class="strike" d="M3.5 3.5l17 17"/></svg></span>
+                      <span class="toggle-label">Phone version</span>
+                    </label>
+                    <div id="regionSet" class="tools-set" hidden>
+                      <span class="tools-pair"><span id="regionShapeLabel" class="tools-label">Kept part</span>
+                      <fieldset class="sizes" aria-labelledby="regionShapeLabel">
+                        <label class="seg" title="Wide"><input type="radio" name="regionShape" value="wide"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-reg-wide"/></svg><span class="vh">Wide</span></label>
+                        <label class="seg" title="Square"><input type="radio" name="regionShape" value="square"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-reg-square"/></svg><span class="vh">Square</span></label>
+                      </fieldset></span>
+                      <span class="tools-pair"><span id="regionSizeLabel" class="tools-label">Size</span>
+                      <fieldset class="sizes" aria-labelledby="regionSizeLabel">
+                        <label class="seg" title="Half"><input type="radio" name="regionSize" value="half"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-reg-half"/></svg><span class="vh">Half</span></label>
+                        <label class="seg" title="Two thirds"><input type="radio" name="regionSize" value="twothirds"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-reg-twothirds"/></svg><span class="vh">Two thirds</span></label>
+                        <label class="seg" title="Whole"><input type="radio" name="regionSize" value="whole"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-reg-whole"/></svg><span class="vh">Whole</span></label>
+                      </fieldset></span>
+                    </div>
+                    <p id="regionHelp" class="vh">The part of the screen the phone version keeps, above the camera. Drag it, or use the arrow keys, to move it.</p>
+                  </div>
+                  <p id="editBubbleHelp" class="bubble-note">Drag the bubble, or select it and use the arrow keys, to place your webcam. The video shows it where you leave it.</p>
+                </div>
                 <div id="trim" class="trim">
                   <div class="trim-bar">
                     <div id="cutMarks" class="trim-cuts" aria-hidden="true"></div>
@@ -139,18 +232,22 @@
                   <span class="field-label">Thumbnail</span>
                   <div class="thumb-row">
                     <span id="thumbPlate" class="thumb-plate"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-frame"/></svg></span>
+                    <span id="phonePlate" class="phone-plate" title="Phone version" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-phone"/></svg></span>
                     <button id="useFrame" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-frame"/></svg></span><span class="act-label">Use current frame</span></button>
                   </div>
                   <div class="msg"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="thumbMsg">Default: 1 second into the trimmed video.</p></div>
                 </div>
                 <div id="uploadStep" class="upload" hidden>
                   <div id="uploadActs" class="upload-acts">
-                    <button id="upload" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Upload and get link</span></button>
+                    <button id="upload" type="button" class="act"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span id="uploadLabel" class="act-label">Upload and get link</span></button>
                     <button id="download" type="button" class="act act--quiet"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-download"/></svg></span><span class="act-label">Download MP4</span></button>
+                    <button id="downloadPhone" type="button" class="act act--quiet" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-phone"/></svg></span><span class="act-label">Download phone MP4</span></button>
                     <a id="downloadLink" hidden download="vignette.mp4">Download</a>
                   </div>
-                  <progress id="progress" max="1" value="0" hidden></progress>
+                  <div class="progress-row"><progress id="progress" max="1" value="0" hidden></progress><b id="progressPct" class="num" aria-hidden="true"></b></div>
                   <div class="msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="uploadMsg" role="status"></p></div>
+                  <div class="msg phone-msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="phoneMsg" role="status"></p></div>
+                  <button id="retryPhone" type="button" class="act act--quiet" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Retry<span class="vh"> sending the phone version</span></span></button>
                   <button id="retry" type="button" class="act" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Retry upload</span></button>
                   <div id="shareBox" class="gate-link" hidden>
                     <textarea id="shareUrl" rows="2" readonly spellcheck="false" aria-label="Share link"></textarea>
@@ -159,6 +256,8 @@
                       <a id="open" class="act act--quiet" target="_blank" rel="noopener"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-out"/></svg></span><span class="act-label">Open</span></a>
                       <a class="act act--quiet" href="/"><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-record"/></svg></span><span class="act-label">Record another</span></a>
                     </div>
+                    <div class="msg raw-msg" hidden><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-warning"/></svg><p id="rawMsg" role="status"></p></div>
+                    <button id="retryRaw" type="button" class="act act--quiet" hidden><span class="sq"><svg class="glyph" aria-hidden="true"><use href="/icons.svg#i-arrow-up"/></svg></span><span class="act-label">Retry<span class="vh"> keeping the originals</span></span></button>
                   </div>
                 </div>
               </div>

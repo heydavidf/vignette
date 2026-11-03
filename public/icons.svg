@@ -2,7 +2,7 @@
   <!-- Vignette pictograms. One 24 unit grid, one 2.75 stroke, square ends,
        mitred corners. Solid shapes (record, stop, play, sizes) are filled.
        Ids carry an "i-" prefix so they never collide with page ids.
-       The share page inlines this file (worker/index.js imports it). -->
+       The share page inlines this file (worker/share-page.js imports it). -->
   <symbol id="i-arrow-right" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 12H19M12.5 5l7 7-7 7"/></g></symbol>
   <symbol id="i-arrow-left" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M20.5 12H5M11.5 5l-7 7 7 7"/></g></symbol>
   <symbol id="i-arrow-up" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M12 20.5V5M5 11.5l7-7 7 7"/></g></symbol>
@@ -21,6 +21,7 @@
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M2.75 4.5h3.5V8h-3.5zM2.75 10.25h3.5v3.5h-3.5zM2.75 16h3.5v3.5h-3.5z" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M10 6.25h11.25M10 12h11.25M10 17.75h11.25"/></g></symbol>
   <symbol id="i-scissors" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><circle cx="6.25" cy="17.75" r="3"/><circle cx="17.75" cy="17.75" r="3"/><path d="M8 15.25 18.25 3M16 15.25 5.75 3"/></g></symbol>
   <symbol id="i-frame" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/><path d="M3 16.25l5.25-5.25 4 4 3-3 5.5 5.5"/></g></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 9V3.5H9M15 3.5h5.5V9M20.5 15v5.5H15M9 20.5H3.5V15"/></g></symbol>
   <symbol id="i-mark-start" viewBox="0 0 24 24"><path d="M3.75 3.75h5v2.5h-2.5v11.5h2.5v2.5h-5z" fill="currentColor"/><path d="M11.5 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
   <symbol id="i-mark-end" viewBox="0 0 24 24"><path d="M20.25 3.75h-5v2.5h2.5v11.5h-2.5v2.5h5z" fill="currentColor"/><path d="M4.25 6.75v10.5l8.25-5.25z" fill="currentColor"/></symbol>
   <!-- Cut from / cut to: the start or end bracket beside a struck rule (a struck rule means removed). -->
@@ -29,4 +30,31 @@
   <symbol id="i-size-s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="currentColor"/></symbol>
   <symbol id="i-size-m" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.25" fill="currentColor"/></symbol>
   <symbol id="i-size-l" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="currentColor"/></symbol>
+  <!-- Script: three lines of text and a short fourth. Pause: two bars. Minus and plus: slower and faster. -->
+  <symbol id="i-script" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M3.5 5.25h17M3.5 10h17M3.5 14.75h17M3.5 19.5h9"/></g></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M5.75 4.75h4.5v14.5h-4.5zM13.75 4.75h4.5v14.5h-4.5z" fill="currentColor"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M4.5 12h15"/></g></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square"><path d="M4.5 12h15M12 4.5v15"/></g></symbol>
+  <!-- Window: a frame with a small picture in its lower right corner (the floating self-view). -->
+  <symbol id="i-window" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M11.5 11h7v5.5h-7z" fill="currentColor"/></symbol>
+  <!-- Layouts, each the frame of the video: bubble (a small disc lower left), split (a rule at 70%),
+       camera only (a small camera), screen only (a monitor: the frame on a short stand, so it is not the
+       frame glyph of Use current frame), padded (a frame inside the frame). -->
+  <symbol id="i-lay-bubble" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><circle cx="8" cy="14" r="2.75" fill="currentColor"/></symbol>
+  <symbol id="i-lay-split" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75zM15.75 4.75v14.5"/></g></symbol>
+  <symbol id="i-lay-camera" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M6.75 9.5h6.5v5h-6.5zM13.25 11.25l4-2v5.5l-4-2z" fill="currentColor"/></symbol>
+  <symbol id="i-lay-screen" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 3.75h18.5v12.5H2.75zM12 16.25v3.5M7.75 20.25h8.5"/></g></symbol>
+  <symbol id="i-lay-padded" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75zM7.75 9.25h8.5v5.5h-8.5z"/></g></symbol>
+  <!-- Bubble shapes: round, and square with the bubble's own 8% corners. -->
+  <symbol id="i-shape-round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.75"/></symbol>
+  <symbol id="i-shape-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.3" fill="none" stroke="currentColor" stroke-width="2.75"/></symbol>
+  <!-- The phone version: a phone (a tall plate with a short rule at its foot); the region's shapes, Wide (16:9)
+       and Square, as plain outlines with square corners (unlike the bubble's square); its sizes, the frame of the
+       screen with a filled box half, two thirds and the whole of its width. -->
+  <symbol id="i-phone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M6.75 2.75h10.5v18.5H6.75zM10.75 17.5h2.5"/></g></symbol>
+  <symbol id="i-reg-wide" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 6.8h18.5v10.4H2.75z"/></g></symbol>
+  <symbol id="i-reg-square" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M5.5 5.5h13v13h-13z"/></g></symbol>
+  <symbol id="i-reg-half" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M8.25 9.9h7.5v4.2h-7.5z" fill="currentColor"/></symbol>
+  <symbol id="i-reg-twothirds" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M7 9.2h10v5.6H7z" fill="currentColor"/></symbol>
+  <symbol id="i-reg-whole" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="square" stroke-linejoin="miter"><path d="M2.75 4.75h18.5v14.5H2.75z"/></g><path d="M4 7.5h16v9H4z" fill="currentColor"/></symbol>
 </svg>
