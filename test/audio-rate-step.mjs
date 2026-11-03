@@ -4,8 +4,8 @@
 // recording with "This specific encoder configuration (mp4a.40.29, 128000 bps,
 // 2 channels, 24000 Hz) is not supported" until public/audio.js resampled it.
 // Here every AudioContext in the page runs at 24 kHz; the recording must come
-// out at 24 kHz, and the Bubble render and a Screen only cut at 48 kHz, as long
-// as the clip and with the sound still in it.
+// out at 24 kHz (rebuilt so on Linux, see soundAt), and the Bubble render and a
+// Screen only cut at 48 kHz, as long as the clip and with the sound still in it.
 export const AUDIO_RATE_STEP = '3r. Sound at 24 kHz, as from a headset microphone: the bubble render and a cut re-encode it at 48 kHz, as long as the clip and audible';
 const MB = '/vendor/mediabunny-1.61.6.min.mjs';
 
@@ -14,6 +14,30 @@ const MB = '/vendor/mediabunny-1.61.6.min.mjs';
 function headsetRate() {
   const Real = window.AudioContext;
   window.AudioContext = class extends Real { constructor(options = {}) { super({ sampleRate: 24000, ...options }); } };
+}
+
+// Runs in the page: makes the edit step's screen recording carry its sound at `rate`. Chromium on macOS
+// records AAC at the AudioContext's rate, so a 24 kHz context gives 24 kHz already. Chromium on Linux has no
+// AAC encoder and records Opus, which always decodes at 48 kHz, so there the recording is rebuilt with its
+// video copied and its sound as 16-bit PCM at `rate`, and the edit step is given that file. The headset bug
+// cannot happen with Opus, but the render and the cuts still meet sound at `rate` and must resample it.
+// Shared with audio-rate-scenario.mjs. Returns the sound's codec and rate, and whether it was rebuilt.
+export async function soundAt({ mb, rate }) {
+  const M = await import(mb);
+  const video = window.__vignette.editor.video;
+  const track = async (blob) => {
+    const input = new M.Input({ formats: M.ALL_FORMATS, source: new M.BlobSource(blob) });
+    try { const t = await input.getPrimaryAudioTrack(); return t && { codec: await t.getCodecParameterString(), rate: t.sampleRate }; } finally { input.dispose(); }
+  };
+  const recorded = await track(video.blob);
+  if (!recorded || recorded.rate === rate) return { ...recorded, rebuilt: false };
+  const output = new M.Output({ format: new M.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new M.BufferTarget() });
+  const input = new M.Input({ formats: M.ALL_FORMATS, source: new M.BlobSource(video.blob) });
+  const conversion = await M.Conversion.init({ input, output, audio: { codec: 'pcm-s16', sampleRate: rate, forceTranscode: true } });
+  if (!conversion.isValid) throw new Error(`could not rebuild the recording's sound at ${rate} Hz: ${conversion.discardedTracks.map((d) => d.reason).join(', ')}`);
+  await conversion.execute();
+  video.blob = new Blob([output.target.buffer], { type: 'video/mp4' });
+  return { ...(await track(video.blob)), rebuilt: true, recorded };
 }
 
 // Runs in the page: the sound of the recording or of the export. The track's
@@ -61,6 +85,7 @@ export async function audioRateStep(browser, { base, login, pageHooks, watch, re
     await page.check('#cam');
     await page.check('#mic');
     await record(page, 4);
+    const made = await page.evaluate(soundAt, { mb: MB, rate: 24000 });
     const raw = await page.evaluate(sound, { mb: MB, source: 'video' });
     assert(raw && raw.rate === 24000 && raw.peak > 0.05, `the recording's sound is ${JSON.stringify(raw)}; expected 24 kHz with sound in it, standing for a headset`);
     const fine = (s, length, name) => {
@@ -82,7 +107,7 @@ export async function audioRateStep(browser, { base, login, pageHooks, watch, re
     assert(/re-encoded 1 cut/.test(cut.how) && !/Could not/.test(cut.said), `Screen only with a cut says "${cut.how}", "${cut.said}"`);
     const reencoded = await page.evaluate(sound, { mb: MB, source: 'export' });
     fine(reencoded, raw.duration - 1, 'Screen only with a cut');
-    ok(`recorded ${raw.codec} at ${raw.rate} Hz (${raw.duration.toFixed(2)} s, peak ${raw.peak.toFixed(2)}); the bubble render gave ${rendered.codec} at ${rendered.rate} Hz, `
+    ok(`${made.rebuilt ? `recorded ${made.recorded.codec} at ${made.recorded.rate} Hz, rebuilt as` : 'recorded'} ${raw.codec} at ${raw.rate} Hz (${raw.duration.toFixed(2)} s, peak ${raw.peak.toFixed(2)}); the bubble render gave ${rendered.codec} at ${rendered.rate} Hz, `
       + `${rendered.seconds.toFixed(2)} s, peak ${rendered.peak.toFixed(2)}; Screen only with a 1 s cut gave ${reencoded.codec} at ${reencoded.rate} Hz, ${reencoded.seconds.toFixed(2)} s, peak ${reencoded.peak.toFixed(2)}`);
   } finally {
     await context.close();

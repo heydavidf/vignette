@@ -7,6 +7,7 @@
 // kHz is passed through, not resampled. 4: the phone version at 24 kHz.
 // The exports are decoded in the page with Mediabunny and measured.
 import { readFile } from 'node:fs/promises';
+import { soundAt } from './audio-rate-step.mjs';
 
 export const AUDIO_RATE_SCENARIO = '3s. Sound at 24, 16 and 44.1 kHz: a 440 Hz tone keeps its pitch without clicks, 16 kHz renders at 48 kHz, 44.1 kHz passes through, the phone version is 48 kHz';
 const MB = '/vendor/mediabunny-1.61.6.min.mjs';
@@ -74,7 +75,7 @@ async function measure({ mb, b64 }) {
       else if (x[i] > 0.1 && low) { low = false; cross++; if (firstX < 0) firstX = i; lastX = i; }
     }
     const hz = cross > 1 ? ((cross - 1) * rate) / (lastX - firstX) : 0;
-    return { rate, first, end, frames: x.length, peak, rms: Math.sqrt(sq / (b - a)), jump, at, hz, duration: end - first };
+    return { codec: await track.getCodecParameterString(), rate, first, end, frames: x.length, peak, rms: Math.sqrt(sq / (b - a)), jump, at, hz, duration: end - first };
   } finally { input.dispose(); }
 }
 
@@ -88,6 +89,7 @@ async function scenario(browser, ctx, { rate, tone = false }, body) {
     await ctx.login(page, ctx.base);
     await page.waitForSelector('#app:not([hidden])');
     await ctx.record(page, SECONDS);
+    await page.evaluate(soundAt, { mb: MB, rate }); // on Linux, where Chromium records Opus at 48 kHz, the sound is rebuilt at `rate`
     const sound = await page.evaluate(() => window.__vignette.editor.video.duration);
     return await body(page, sound);
   } finally { await context.close(); }
@@ -150,12 +152,14 @@ export async function audioRateScenario(browser, ctx) {
   assert(two.m.rate === 48000, `scenario 2: 16 kHz sound came out at ${two.m.rate} Hz, expected 48000`);
   assert(Math.abs(two.m.duration - two.clip) < 0.3, `scenario 2: sound lasts ${f(two.m.duration)} s for a ${f(two.clip)} s clip`);
 
-  // 3. 44.1 kHz is not resampled
+  // 3. 44.1 kHz is not resampled. Where the encoder is Opus (Chromium on Linux has no AAC encoder), the file is
+  // 48 kHz whatever goes in, since Opus always is; there it must be 48 kHz Opus.
   const three = await scenario(browser, ctx, { rate: 44100 }, async (page, clip) => {
     return { clip, m: await exportAndMeasure(page, '#download') };
   });
   assert(!three.m.none && three.m.peak > 0.01, `scenario 3: no sound in the 44.1 kHz export (peak ${three.m.peak})`);
-  assert(three.m.rate === 44100, `scenario 3: 44.1 kHz sound came out at ${three.m.rate} Hz, expected it kept`);
+  const kept = three.m.codec === 'opus' ? 48000 : 44100;
+  assert(three.m.rate === kept, `scenario 3: 44.1 kHz sound came out as ${three.m.codec} at ${three.m.rate} Hz, expected ${kept}`);
   assert(Math.abs(three.m.duration - three.clip) < 0.3, `scenario 3: sound lasts ${f(three.m.duration)} s for a ${f(three.clip)} s clip`);
 
   // 4. The phone version at 24 kHz
