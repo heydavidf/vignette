@@ -2,6 +2,12 @@
 
 Notable changes to Vignette. Versions follow [Semantic Versioning](https://semver.org/); each release is a Git tag and a GitHub Release.
 
+## Unreleased
+
+### Fixed
+
+- A recording whose sound is not at 44.1 or 48 kHz could not be rendered or have a cut taken out. A Bluetooth headset's microphone, AirPods on a Mac for one, records at 24 kHz, and every export with the webcam failed with "Could not render the webcam bubble (This specific encoder configuration (mp4a.40.29, 128000 bps, 2 channels, 24000 Hz) is not supported ...)". Browsers encode AAC at those two rates only, so the render and the cuts now resample such sound to 48 kHz first (`public/audio.js`). A trim alone still copies the sound as recorded.
+
 ## 0.2.0 (2026-11-03)
 
 ### Two tracks

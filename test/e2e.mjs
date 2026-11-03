@@ -19,6 +19,8 @@ import { layoutsStep, LAYOUTS_STEP, againStep, AGAIN_STEP } from './layouts-step
 import { layoutsScenario, LAYOUTS_SCENARIO } from './layouts-scenario.mjs';
 import { mobileStep, MOBILE_STEP, mobileUploadStep, MOBILE_UPLOAD_STEP } from './mobile-step.mjs';
 import { mobileScenario, MOBILE_SCENARIO } from './mobile-scenario.mjs';
+import { audioRateStep, AUDIO_RATE_STEP } from './audio-rate-step.mjs';
+import { audioRateScenario, AUDIO_RATE_SCENARIO } from './audio-rate-scenario.mjs';
 
 const RECORD_SECONDS = 4;
 const PART = 20 * 1024 * 1024;
@@ -213,6 +215,11 @@ try {
   await mobileUploadStep(page, { record, assert, ok, base, api, listVideos, browser, dir: main.dir });
   step(MOBILE_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
   await mobileScenario(page, { record, assert, ok, base, api, login, pageHooks, watch, dir: main.dir });
+
+  step(AUDIO_RATE_STEP); // in its own context, its AudioContext at a headset's 24 kHz
+  await audioRateStep(browser, { base, login, pageHooks, watch, record, assert, ok });
+  step(AUDIO_RATE_SCENARIO); // the independent scenario test (AGENTS.md rule 5)
+  await audioRateScenario(browser, { base, login, pageHooks, watch, record, assert, ok });
 
   step('4. Share page');
   const share = await fetch(`${base}/v/${id}`);

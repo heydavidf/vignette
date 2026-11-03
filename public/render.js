@@ -20,6 +20,7 @@ import {
   getFirstEncodableVideoCodec, getFirstEncodableAudioCodec,
 } from './vendor/mediabunny-1.61.6.min.mjs';
 import { openInput, frameAt, toJpeg } from './media.js';
+import { audioFeed } from './audio.js';
 import { paint } from './bubble.js';
 import { heap } from './tracks.js';
 import { geometry, fitRect, scaled, layoutOf, mobile } from './layouts.js';
@@ -148,17 +149,22 @@ export async function renderLayout({ screen, camera = null, cameraOffset = 0, ra
       open.length = 0;
       if (aSink) {
         const offset = startSlot / FPS;
+        const feed = audioFeed(); // one per range: a cut is a jump, so no frame carries over it
         for await (const sample of aSink.samples(s, e)) {
+          let out = null;
           try {
             // Whole audio frames only, as in cuts.js: one that starts inside
             // the range is kept even if it runs a few ms past the end.
             if (sample.timestamp < s || sample.timestamp >= e) continue;
+            out = feed(sample); // at a rate the encoder takes (audio.js)
+            if (!out) continue;
             const t = Math.max(audioEnd, offset + sample.timestamp - s);
-            sample.setTimestamp(t);
-            await aSrc.add(sample);
-            audioEnd = t + sample.duration;
+            out.setTimestamp(t);
+            await aSrc.add(out);
+            audioEnd = t + out.duration;
           } finally {
             sample.close();
+            if (out !== sample) out?.close();
           }
         }
       }
